@@ -71,6 +71,7 @@ error MissingFillOptions();
 error InvalidFillChain();
 error InvalidFillChainToken();
 error ZeroAmount();
+error InsufficientAllowance();
 
 // LIBRARIES
 
@@ -178,10 +179,21 @@ contract AlphaBlueOfferer is Ownable {
             if (params.fillOptions[i].amount == 0) revert ZeroAmount();
         }
 
-        // Take deposit
+        // Take initial stake for deposit
         // @TODO: If offer is token offer (params.tokenAddress != address(0)) then take a 1% deposit
         // 	validate approval
         //  use ERC20.safeTransferFrom to transfer the tokens to this contract
+
+        if (params.tokenAddress != address(0)){
+            uint256 stakeAmount = params.tokenAmount.scaleByBP(100); // 1%
+
+            // Check allowance
+            if (IERC20(params.tokenAddress).allowance(msg.sender, address(this)) < stakeAmount) {
+                revert InsufficientAllowance(); 
+            }
+
+            IERC20(params.tokenAddress).safeTransferFrom(msg.sender, address(this), stakeAmount);
+        }
 
         uint256 offerId = offers.length;
         OfferData storage offer = offers[offerId];
