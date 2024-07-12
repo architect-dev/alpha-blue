@@ -133,6 +133,7 @@ error TokenMismatch();
 error NftMismatch();
 error InvalidPartialFill();
 error FillUnavailable();
+error InvalidNFTOrder();
 
 // LIBRARIES
 
@@ -214,8 +215,8 @@ contract AlphaBlueOfferer is Ownable {
             if (availableChainTokens[chainId][params.tokenAddress] != true)
                 revert InvalidFillChainToken();
         } else {
-            // NFT
-            // @TODO: VALIDATE THIS
+            if (params.nftAddress == address(0))
+                revert InvalidNFTOrder();         
         }
 
         // Validate offer fills
@@ -236,11 +237,7 @@ contract AlphaBlueOfferer is Ownable {
         }
 
         // Take initial stake for deposit
-        // @TODO: If offer is token offer (params.tokenAddress != address(0)) then take a 1% deposit
-        // 	validate approval
-        //  use ERC20.safeTransferFrom to transfer the tokens to this contract
-
-        if (params.tokenAddress != address(0)){
+        if (params.tokenAddress != address(0)) {
             uint256 stakeAmount = params.tokenAmount.scaleByBP(100); // 1%
 
             // Check allowance
