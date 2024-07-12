@@ -8,6 +8,8 @@ import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeE
 
 // STRUCTS / EVENTS / ERRORS
 
+// TODO: Send CMESSAGE to claim stake of pending tx that has passed the deadline, this will cancel the remainder of the offer if there are no other pendingBP
+
 struct FillOption {
     uint256 chainId;
     address tokenAddress;
@@ -86,6 +88,7 @@ enum ErrorType {
     NONE,
     // Params are good, but option no longer available
     UNAVAILABLE__FILL_BP,
+    UNAVAILABLE__EXPIRED,
     // Params are invalid
     INVALID__FILL_CHAIN_MISMATCH,
     INVALID__OFFER_CHAIN_MISMATCH,
@@ -125,7 +128,7 @@ error MissingFillOptions();
 error InvalidFillChain();
 error InvalidFillChainToken();
 error ZeroAmount();
-error InsufficientAllowance();
+error InsufficientAllowanceOrBalance();
 error InvalidApproval();
 error ChainMismatch();
 error InvalidOfferId();
@@ -134,6 +137,7 @@ error NftMismatch();
 error InvalidPartialFill();
 error FillUnavailable();
 error InvalidNFTOrder();
+error NotOfferer();
 
 // LIBRARIES
 
@@ -215,8 +219,7 @@ contract AlphaBlueOfferer is Ownable {
             if (availableChainTokens[chainId][params.tokenAddress] != true)
                 revert InvalidFillChainToken();
         } else {
-            if (params.nftAddress == address(0))
-                revert InvalidNFTOrder();         
+            if (params.nftAddress == address(0)) revert InvalidNFTOrder();
         }
 
         // Validate offer fills
@@ -237,15 +240,28 @@ contract AlphaBlueOfferer is Ownable {
         }
 
         // Take initial stake for deposit
+        // @TODO: If offer is token offer (params.tokenAddress != address(0)) then take a 1% deposit
+        // 	validate approval
+        //  use ERC20.safeTransferFrom to transfer the tokens to this contract
+
         if (params.tokenAddress != address(0)) {
             uint256 stakeAmount = params.tokenAmount.scaleByBP(100); // 1%
 
             // Check allowance
-            if (IERC20(params.tokenAddress).allowance(msg.sender, address(this)) < stakeAmount) {
-                revert InsufficientAllowance(); 
-            }
+            if (
+                !_checkAllowanceAndBalance(
+                    params.tokenAddress,
+                    stakeAmount,
+                    msg.sender,
+                    address(this)
+                )
+            ) revert InsufficientAllowanceOrBalance();
 
-            IERC20(params.tokenAddress).safeTransferFrom(msg.sender, address(this), stakeAmount);
+            IERC20(params.tokenAddress).safeTransferFrom(
+                msg.sender,
+                address(this),
+                stakeAmount
+            );
         }
 
         // OFFER DATA
@@ -318,6 +334,10 @@ contract AlphaBlueOfferer is Ownable {
             ccipBlue.offerNftAddress != offer.nftAddress
         ) return ErrorType.INVALID__NFT_MISMATCH;
 
+        // Validate expiration
+        if (offer.expiration < block.timestamp)
+            return ErrorType.UNAVAILABLE__EXPIRED;
+
         // Validate partials
         if (
             ccipBlue.partialBP == 0 ||
@@ -361,21 +381,46 @@ contract AlphaBlueOfferer is Ownable {
             })
         );
 
+        // ====
+        // After this point, everything should go through
+        // OR the token / nft isn't approved / available
+        // and must be manually retried by bob
+        // @TODO: move this to a new function
+        // ===
+
+        offerStatuses[ccipBlue.offerId].pendingBP += ccipBlue.partialBP;
+        _handleOfferFill(ccipBlue.offerId, offerFillId);
+
+        return ErrorType.NONE;
+    }
+    function nudgeOffer(uint256 offerId) public {
+        if (offerId >= offers.length) revert InvalidOfferId();
+        if (offers[offerId].owner != msg.sender) revert NotOfferer();
+
+        // Fill should have succeeded but didn't so can retry
+        for (uint256 i = 0; i < offerStatuses[offerId].offerFills.length; i++) {
+            _handleOfferFill(offerId, i);
+        }
+    }
+    function _handleOfferFill(uint256 offerId, uint256 offerFillId) internal {
+        OfferData storage offer = offers[offerId];
+        OfferStatus storage offerStatus = offerStatuses[offerId];
+        OfferFillData storage offerFill = offerStatus.offerFills[offerFillId];
+
         uint256 offerTokenPartialAmount = offer.tokenAmount.scaleByBP(
-            ccipBlue.partialBP
+            offerFill.partialBP
         );
 
         // If offer is TOKEN
         if (offer.tokenAddress != address(0)) {
             // If allowance and balance checks pass, pull from wallet, mark fill as succeeded, send CXFILL, add filledBP
             if (
-                IERC20(offer.tokenAddress).allowance(
+                _checkAllowanceAndBalance(
+                    offer.tokenAddress,
+                    offerTokenPartialAmount,
                     offer.owner,
                     address(this)
-                ) >=
-                offerTokenPartialAmount &&
-                IERC20(offer.tokenAddress).balanceOf(offer.owner) >=
-                offerTokenPartialAmount
+                )
             ) {
                 // Transfer tokens from bob
                 IERC20(offer.tokenAddress).safeTransferFrom(
@@ -383,26 +428,17 @@ contract AlphaBlueOfferer is Ownable {
                     address(this),
                     offerTokenPartialAmount
                 );
-                offerStatuses[ccipBlue.offerId]
-                    .offerFills[offerFillId]
-                    .pending = false;
-                offerStatuses[ccipBlue.offerId].filledBP += offerStatuses[
-                    ccipBlue.offerId
-                ].offerFills[offerFillId].partialBP;
+                offerFill.pending = false;
+                offerStatus.filledBP += offerFill.partialBP;
+                offerStatus.pendingBP -= offerFill.partialBP;
 
                 // Transfer tokens to ada
                 IERC20(offer.tokenAddress).safeTransfer(
-                    offerStatuses[ccipBlue.offerId]
-                        .offerFills[offerFillId]
-                        .adaDestAddress,
+                    offerFill.adaDestAddress,
                     offerTokenPartialAmount
                 );
 
                 // @TODO: send CXFILL to allow bob to withdraw on ada's chain
-            } else {
-                offerStatuses[ccipBlue.offerId].pendingBP += offerStatuses[
-                    ccipBlue.offerId
-                ].offerFills[offerFillId].partialBP;
             }
         }
 
@@ -410,13 +446,16 @@ contract AlphaBlueOfferer is Ownable {
         if (offer.nftAddress != address(0)) {
             // @TODO: send NFT to adaAddress, update state
         }
-
-        return ErrorType.NONE;
     }
-    function resendCXFILL() public {
-        // Owner of offer
-        // Fill should have succeeded but didn't so can retry
-        _sendCXFILL();
+    function _checkAllowanceAndBalance(
+        address token,
+        uint256 amount,
+        address from,
+        address to
+    ) internal view returns (bool) {
+        return
+            IERC20(token).allowance(from, to) >= amount &&
+            IERC20(token).balanceOf(from) >= amount;
     }
     function _sendCXFILL() internal {
         // @TODO
