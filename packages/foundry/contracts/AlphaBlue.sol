@@ -7,11 +7,21 @@ import "forge-std/console.sol";
 // Use openzeppelin to inherit battle-tested implementations (ERC20, ERC721, etc)
 // import "@openzeppelin/contracts/access/Ownable.sol";
 
-/**
- * A smart contract that allows changing a state variable of the contract and tracking the changes
- * It also allows the owner to withdraw the Ether in the contract
- * @author BuidlGuidl
- */
+library QuikMaff {
+    function min(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a < b ? a : b;
+    }
+    function max(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a > b ? a : b;
+    }
+    function scaleByBP(
+        uint256 amount,
+        uint256 bp
+    ) internal pure returns (uint256) {
+        if (bp == 10000) return amount;
+        return (amount * bp) / 10000;
+    }
+}
 
 struct ChainWallet {
     uint256 chainId;
@@ -33,8 +43,8 @@ struct OfferParams {
     address nftAddress;
     uint256 nftId;
     // settings
-    bool allowPartials;
-    AcceptableFills[] acceptableFills;
+    bool allowPartialFills;
+    FillOption[] fillOptions;
     uint256 duration;
 }
 
@@ -57,6 +67,8 @@ struct FillData {
 }
 
 contract AlphaBlue {
+    using QuikMaff for uint256;
+
     // State Variables
     address public immutable owner;
     uint256 public immutable chainId;
