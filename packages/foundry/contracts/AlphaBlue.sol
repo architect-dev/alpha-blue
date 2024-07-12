@@ -7,18 +7,12 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 // STRUCTS / EVENTS / ERRORS
 
-struct ChainWallet {
-    uint256 chainId;
-    address wallet;
-}
 struct FillOption {
     uint256 chainId;
     address token;
     uint256 amount;
     uint256 destinationWallet;
 }
-
-// Stretch goals
 
 struct OfferData {
     address owner;
@@ -35,12 +29,39 @@ struct OfferData {
 }
 
 struct FillData {
-    uint256 chain;
-    uint256 id;
-    uint256 orderChain;
-    uint256 orderId;
-    address token;
-    uint256 amount;
+    uint256 offerChain;
+    uint256 offerId;
+    address fillToken;
+    uint256 fillAmount;
+}
+
+// MESSAGE TYPES
+// 0 = CFILL - Fill has been called, tell offer that fill is available, distribute offerToken / offerNft
+// 1 = CXFILL - Offer has agreed to fill, tell fill that it can distribute fillToken
+// 2 = CINVALID - data sent with fill doesn't match order
+// 3 = CUNAVAILABLE - offer no longer available
+enum MessageType {
+    CFILL,
+    CXFILL,
+    CINVALID,
+    CUNAVAILABLE
+}
+struct CCIPBlue {
+    uint8 messageType;
+    uint256 offerId;
+    uint256 fillId;
+    // token offer
+    address offerTokenAddress;
+    uint256 offerTokenAmount;
+    // nft offer
+    address offerNftAddress;
+    uint256 offerNftId;
+    // token fill
+    address fillTokenAddress;
+    uint256 fillTokenAmount;
+    // wallet addresses
+    uint256 bobDestAddress;
+    uint256 adaDestAddress;
 }
 
 error OfferOwnerMismatch();
@@ -70,7 +91,7 @@ library QuikMaff {
 
 // MAIN CONTRACT
 
-contract AlphaBlue is Ownable {
+contract AlphaBlueOfferer is Ownable {
     using QuikMaff for uint256;
 
     // State Variables
@@ -80,6 +101,7 @@ contract AlphaBlue is Ownable {
     // TODO: Set available chains function
 
     OfferData[] public offers;
+    mapping(uint256 => OfferStatus) public offerStatus; // offerid -> offerStatus mapping
 
     string public greeting = "Building Unstoppable Apps!!!";
     bool public premium = false;
@@ -100,6 +122,22 @@ contract AlphaBlue is Ownable {
     }
 
     function setChainsAndTokens() public onlyOwner {}
+
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    // === OFFERS ===
+    //
+    //
+    //
+    //
+    //
+    //
+    //
 
     // USER ACTIONS
 
@@ -167,5 +205,99 @@ contract AlphaBlue is Ownable {
         // Validate msg.sender = offer owner
         // Validate auction doesn't have anything pending
         // Mark auction state as cancelled
+    }
+
+    function _handleCFILL() internal {
+        // Handle CFILL
+        // Eventually if successful, send CXFILL
+    }
+    function resendCXFILL() public {
+        // Owner of offer
+        // Fill should have succeeded but didn't so can retry
+        _sendCXFILL();
+    }
+    function _sendCXFILL() internal {
+        // @TODO
+    }
+
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    // === FILLS ===
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+
+    function fill() public {
+        // Validate stuff
+        // Send CFILL
+        _sendCFILL();
+    }
+    function resendCFILL() public {
+        // Fill id exists
+        // Fill id owner is msg.sender
+
+        // Resend CFILL
+        _sendCFILL();
+    }
+    function _sendCFILL() internal {
+        // Encode and send CFILL
+    }
+    function _handleCXFILL() internal {
+        // _handleCXFILL
+    }
+    function _handleCINVALID() internal {
+        // _handleCINVALID
+    }
+    function _handleCUNAVAILABLE() internal {
+        // _handleCUNAVAILABLE
+    }
+
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    // === SHARED ===
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+
+    function _receiveCCIP() internal {
+        // Decode CCIP using CCPIBlue struct
+        // Using message type, branch to functions
+
+        uint256 messageType = 0;
+
+        // 0 = CFILL - Fill has been called, tell offer that fill is available, distribute offerToken / offerNft
+        // 1 = CXFILL - Offer has agreed to fill, tell fill that it can distribute fillToken
+        // 2 = CINVALID - data sent with fill doesn't match order
+        // 3 = CUNAVAILABLE - offer no longer available
+        if (messageType == MessageType.CFILL) {
+            // Route to offer function _handleCFILL()
+        }
+        if (messageType == MessageType.CXFILL) {
+            // Route to fill function _handleCXFILL()
+        }
+        if (messageType == MessageType.CINVALID) {
+            // Route to fill function _handleCINVALID()
+        }
+        if (messageType == MessageType.CUNAVAILABLE) {
+            // Route to fill function _handleCUNAVAILABLE()
+        }
     }
 }
