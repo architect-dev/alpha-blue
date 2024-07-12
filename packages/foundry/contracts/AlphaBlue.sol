@@ -10,9 +10,9 @@ import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeE
 
 struct FillOption {
     uint256 chainId;
-    address token;
-    uint256 amount;
-    uint256 destinationWallet;
+    address tokenAddress;
+    uint256 tokenAmount;
+    uint256 destWallet;
 }
 
 struct OfferData {
@@ -29,11 +29,46 @@ struct OfferData {
     FillOption[] fillOptions;
 }
 
+struct OfferStatus {
+    uint256 offerId;
+    uint256 filledBP;
+    uint256 pendingBP;
+    OfferFillData[] offerFills;
+}
+struct OfferFillData {
+    address fillTokenAddress;
+    uint256 fillTokenAmount;
+    uint256 partialBP;
+    uint256 deadline;
+    address adaDestAddress;
+    bool pending;
+}
+
+enum FillStatus {
+    CREATED,
+    INVALID,
+    UNAVAILABLE,
+    COMPLETED
+}
 struct FillData {
     uint256 offerChain;
     uint256 offerId;
-    address fillToken;
-    uint256 fillAmount;
+    address fillTokenAddress;
+    uint256 fillTokenAmount;
+    uint256 deadline;
+    address adaDestAddress;
+}
+struct FillParams {
+    uint256 offerChain;
+    uint256 offerId;
+    address offerTokenAddress;
+    uint256 offerTokenAmount;
+    address offerNftAddress;
+    uint256 offerNftId;
+    address fillTokenAddress;
+    uint256 fillTokenAmount;
+    address adaDestAddress;
+    uint256 partialBP;
 }
 
 // MESSAGE TYPES
@@ -44,12 +79,30 @@ struct FillData {
 enum MessageType {
     CFILL,
     CXFILL,
-    CINVALID,
-    CUNAVAILABLE
+    CINVALID
+}
+enum ErrorType {
+    // No error
+    NONE,
+    // Params are good, but option no longer available
+    UNAVAILABLE__FILL_BP,
+    // Params are invalid
+    INVALID__FILL_CHAIN_MISMATCH,
+    INVALID__OFFER_CHAIN_MISMATCH,
+    INVALID__OFFER_ID,
+    INVALID__TOKEN_MISMATCH,
+    INVALID__NFT_MISMATCH,
+    INVALID__PARTIAL_FILL_ON_NON_PARTIAL
 }
 struct CCIPBlue {
-    uint8 messageType;
+    MessageType messageType;
+    // wallet addresses
+    address bobDestAddress;
+    address adaDestAddress;
+    // Chains & ids
+    uint256 offerChain;
     uint256 offerId;
+    uint256 fillChain;
     uint256 fillId;
     // token offer
     address offerTokenAddress;
@@ -60,9 +113,10 @@ struct CCIPBlue {
     // token fill
     address fillTokenAddress;
     uint256 fillTokenAmount;
-    // wallet addresses
-    uint256 bobDestAddress;
-    uint256 adaDestAddress;
+    uint256 partialBP;
+    uint256 deadline;
+    // custom
+    ErrorType errorType;
 }
 
 error OfferOwnerMismatch();
@@ -72,6 +126,13 @@ error InvalidFillChain();
 error InvalidFillChainToken();
 error ZeroAmount();
 error InsufficientAllowance();
+error InvalidApproval();
+error ChainMismatch();
+error InvalidOfferId();
+error TokenMismatch();
+error NftMismatch();
+error InvalidPartialFill();
+error FillUnavailable();
 
 // LIBRARIES
 
@@ -104,12 +165,7 @@ contract AlphaBlueOfferer is Ownable {
     // TODO: Set available chains function
 
     OfferData[] public offers;
-    mapping(uint256 => OfferStatus) public offerStatus; // offerid -> offerStatus mapping
-
-    string public greeting = "Building Unstoppable Apps!!!";
-    bool public premium = false;
-    uint256 public totalCounter = 0;
-    mapping(address => uint256) public userGreetingCounter;
+    mapping(uint256 => OfferStatus) public offerStatuses; // offerid -> offerStatus mapping
 
     // EVENTS
     event OfferCreated(
@@ -173,10 +229,10 @@ contract AlphaBlueOfferer is Ownable {
                 revert InvalidFillChain();
             if (
                 availableChainTokens[params.fillOptions[i].chainId][
-                    params.fillOptions[i].token
+                    params.fillOptions[i].tokenAddress
                 ] != true
             ) revert InvalidFillChainToken();
-            if (params.fillOptions[i].amount == 0) revert ZeroAmount();
+            if (params.fillOptions[i].tokenAmount == 0) revert ZeroAmount();
         }
 
         // Take initial stake for deposit
@@ -195,6 +251,8 @@ contract AlphaBlueOfferer is Ownable {
             IERC20(params.tokenAddress).safeTransferFrom(msg.sender, address(this), stakeAmount);
         }
 
+        // OFFER DATA
+
         uint256 offerId = offers.length;
         OfferData storage offer = offers[offerId];
 
@@ -211,6 +269,9 @@ contract AlphaBlueOfferer is Ownable {
             offer.fillOptions.push(params.fillOptions[i]);
         }
 
+        // OFFER STATUS DATA
+        offerStatuses[offerId].offerId = offerId;
+
         emit OfferCreated(chainId, offer.owner, offerId);
     }
 
@@ -221,9 +282,139 @@ contract AlphaBlueOfferer is Ownable {
         // Mark auction state as cancelled
     }
 
-    function _handleCFILL() internal {
-        // Handle CFILL
-        // Eventually if successful, send CXFILL
+    function _handleCFILL(
+        uint256 sourceChain,
+        CCIPBlue memory ccipBlue
+    ) internal {
+        ErrorType err = _handleCFILLReturnErrorType(sourceChain, ccipBlue);
+        if (err == ErrorType.NONE) return;
+
+        ccipBlue.errorType = err;
+        _sendCCIP(ccipBlue);
+    }
+
+    function _handleCFILLReturnErrorType(
+        uint256 sourceChain,
+        CCIPBlue memory ccipBlue
+    ) internal returns (ErrorType) {
+        // Validate CCIP chains
+        if (sourceChain != ccipBlue.fillChain)
+            return ErrorType.INVALID__FILL_CHAIN_MISMATCH;
+        if (chainId != ccipBlue.offerChain)
+            return ErrorType.INVALID__OFFER_CHAIN_MISMATCH;
+
+        // Validate Order exists and matches
+        if (ccipBlue.offerId > offers.length)
+            return ErrorType.INVALID__OFFER_ID;
+        OfferData storage offer = offers[ccipBlue.offerId];
+        if (
+            offer.tokenAddress != address(0) &&
+            ccipBlue.offerTokenAddress != offer.tokenAddress
+        ) return ErrorType.INVALID__TOKEN_MISMATCH;
+        if (
+            offer.nftAddress != address(0) &&
+            (ccipBlue.offerNftAddress != offer.nftAddress ||
+                ccipBlue.offerNftId != offer.nftId)
+        ) return ErrorType.INVALID__NFT_MISMATCH;
+        if (
+            offer.nftAddress != address(0) &&
+            ccipBlue.offerNftAddress != offer.nftAddress
+        ) return ErrorType.INVALID__NFT_MISMATCH;
+
+        // Validate partials
+        if (
+            ccipBlue.partialBP == 0 ||
+            (offer.allowPartialFills == false && ccipBlue.partialBP != 10000)
+        ) return ErrorType.INVALID__PARTIAL_FILL_ON_NON_PARTIAL;
+        if (
+            ccipBlue.partialBP >
+            (10000 -
+                offerStatuses[ccipBlue.offerId].filledBP -
+                offerStatuses[ccipBlue.offerId].pendingBP)
+        ) return ErrorType.UNAVAILABLE__FILL_BP;
+
+        // Fill token
+        bool fillMatched;
+        for (uint256 i = 0; i < offer.fillOptions.length; i++) {
+            if (fillMatched) continue;
+            if (offer.fillOptions[i].chainId != ccipBlue.fillChain) continue;
+            if (offer.fillOptions[i].tokenAddress != ccipBlue.fillTokenAddress)
+                continue;
+            fillMatched = true;
+
+            // Validate token amount matches
+            if (
+                offer.fillOptions[i].tokenAmount.scaleByBP(
+                    ccipBlue.partialBP
+                ) != ccipBlue.fillTokenAmount
+            ) return ErrorType.INVALID__TOKEN_MISMATCH;
+        }
+        if (!fillMatched) return ErrorType.INVALID__TOKEN_MISMATCH;
+
+        // Add offerFillData to OfferStatus
+        uint256 offerFillId = offerStatuses[ccipBlue.offerId].offerFills.length;
+        offerStatuses[ccipBlue.offerId].offerFills.push(
+            OfferFillData({
+                fillTokenAddress: ccipBlue.fillTokenAddress,
+                fillTokenAmount: ccipBlue.fillTokenAmount,
+                partialBP: ccipBlue.partialBP,
+                deadline: ccipBlue.deadline,
+                adaDestAddress: ccipBlue.adaDestAddress,
+                pending: true
+            })
+        );
+
+        uint256 offerTokenPartialAmount = offer.tokenAmount.scaleByBP(
+            ccipBlue.partialBP
+        );
+
+        // If offer is TOKEN
+        if (offer.tokenAddress != address(0)) {
+            // If allowance and balance checks pass, pull from wallet, mark fill as succeeded, send CXFILL, add filledBP
+            if (
+                IERC20(offer.tokenAddress).allowance(
+                    offer.owner,
+                    address(this)
+                ) >=
+                offerTokenPartialAmount &&
+                IERC20(offer.tokenAddress).balanceOf(offer.owner) >=
+                offerTokenPartialAmount
+            ) {
+                // Transfer tokens from bob
+                IERC20(offer.tokenAddress).safeTransferFrom(
+                    offer.owner,
+                    address(this),
+                    offerTokenPartialAmount
+                );
+                offerStatuses[ccipBlue.offerId]
+                    .offerFills[offerFillId]
+                    .pending = false;
+                offerStatuses[ccipBlue.offerId].filledBP += offerStatuses[
+                    ccipBlue.offerId
+                ].offerFills[offerFillId].partialBP;
+
+                // Transfer tokens to ada
+                IERC20(offer.tokenAddress).safeTransfer(
+                    offerStatuses[ccipBlue.offerId]
+                        .offerFills[offerFillId]
+                        .adaDestAddress,
+                    offerTokenPartialAmount
+                );
+
+                // @TODO: send CXFILL to allow bob to withdraw on ada's chain
+            } else {
+                offerStatuses[ccipBlue.offerId].pendingBP += offerStatuses[
+                    ccipBlue.offerId
+                ].offerFills[offerFillId].partialBP;
+            }
+        }
+
+        // If offer is NFT
+        if (offer.nftAddress != address(0)) {
+            // @TODO: send NFT to adaAddress, update state
+        }
+
+        return ErrorType.NONE;
     }
     function resendCXFILL() public {
         // Owner of offer
@@ -250,10 +441,59 @@ contract AlphaBlueOfferer is Ownable {
     //
     //
 
-    function fill() public {
-        // Validate stuff
+    FillData[] public fills;
+
+    function createFill(FillParams calldata params) public {
+        // Validate fill token
+        if (availableChainTokens[chainId][params.fillTokenAddress] != true)
+            revert InvalidFillChainToken();
+
+        // Pull fill token
+        if (
+            IERC20(params.fillTokenAddress).allowance(
+                msg.sender,
+                address(this)
+            ) < params.fillTokenAmount
+        ) revert InvalidApproval();
+        IERC20(params.fillTokenAddress).safeTransferFrom(
+            msg.sender,
+            address(this),
+            params.fillTokenAmount
+        );
+
+        // Create fill data
+        uint256 fillId = fills.length;
+        FillData storage fill = fills[fillId];
+
+        fill.offerChain = params.offerChain;
+        fill.offerId = params.offerId;
+        fill.fillTokenAddress = params.fillTokenAddress;
+        fill.fillTokenAmount = params.fillTokenAmount;
+        fill.adaDestAddress = params.adaDestAddress;
+        fill.deadline = block.timestamp + 1 days;
+
+        _sendCCIP(
+            CCIPBlue({
+                messageType: MessageType.CFILL,
+                bobDestAddress: address(0),
+                adaDestAddress: params.adaDestAddress,
+                offerChain: params.offerChain,
+                offerId: params.offerId,
+                fillChain: chainId,
+                fillId: fillId,
+                offerTokenAddress: params.offerTokenAddress,
+                offerTokenAmount: params.offerTokenAmount,
+                offerNftAddress: params.offerNftAddress,
+                offerNftId: params.offerNftId,
+                fillTokenAddress: params.fillTokenAddress,
+                fillTokenAmount: params.fillTokenAmount,
+                partialBP: params.partialBP,
+                deadline: fill.deadline,
+                errorType: ErrorType.NONE
+            })
+        );
+
         // Send CFILL
-        _sendCFILL();
     }
     function resendCFILL() public {
         // Fill id exists
@@ -291,27 +531,34 @@ contract AlphaBlueOfferer is Ownable {
     //
     //
 
-    function _receiveCCIP() internal {
+    function _sendCCIP(CCIPBlue memory ccipBlue) internal {
+        // Same chain swap
+        if (ccipBlue.offerChain == ccipBlue.fillChain) {
+            receiveCCIP(ccipBlue);
+        }
+
+        // Multi chain swap, mocking with simple contract call
+        // @TODO
+    }
+
+    function receiveCCIP(CCIPBlue memory ccipBlue) public {
         // Decode CCIP using CCPIBlue struct
         // Using message type, branch to functions
 
-        uint256 messageType = 0;
+        MessageType messageType = MessageType.CFILL;
 
         // 0 = CFILL - Fill has been called, tell offer that fill is available, distribute offerToken / offerNft
         // 1 = CXFILL - Offer has agreed to fill, tell fill that it can distribute fillToken
         // 2 = CINVALID - data sent with fill doesn't match order
         // 3 = CUNAVAILABLE - offer no longer available
         if (messageType == MessageType.CFILL) {
-            // Route to offer function _handleCFILL()
+            _handleCFILL(chainId, ccipBlue);
         }
         if (messageType == MessageType.CXFILL) {
             // Route to fill function _handleCXFILL()
         }
         if (messageType == MessageType.CINVALID) {
             // Route to fill function _handleCINVALID()
-        }
-        if (messageType == MessageType.CUNAVAILABLE) {
-            // Route to fill function _handleCUNAVAILABLE()
         }
     }
 }
