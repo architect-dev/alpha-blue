@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity >=0.8.0 <0.9.0;
+pragma solidity ^0.8.20;
 
 // Useful for debugging. Remove when deploying to a live network.
 import "forge-std/console.sol";
@@ -12,9 +12,57 @@ import "forge-std/console.sol";
  * It also allows the owner to withdraw the Ether in the contract
  * @author BuidlGuidl
  */
-contract YourContract {
+
+struct ChainWallet {
+    uint256 chainId;
+    address wallet;
+}
+struct FillOption {
+    uint256 chainId;
+    address token;
+    uint256 amount;
+}
+
+struct OfferParams {
+    // user
+    ChainWallet[] bobWallets;
+    // token offer
+    address tokenAddress;
+    uint256 tokenAmount;
+    // nft offer
+    address nftAddress;
+    uint256 nftId;
+    // settings
+    bool allowPartials;
+    AcceptableFills[] acceptableFills;
+    uint256 duration;
+}
+
+struct OfferData {
+    uint256 chain;
+    uint256 id;
+    address token;
+    uint256 amount;
+    address nftAddress;
+    uint256 nftId;
+}
+
+struct FillData {
+    uint256 chain;
+    uint256 id;
+    uint256 orderChain;
+    uint256 orderId;
+    address token;
+    uint256 amount;
+}
+
+contract AlphaBlue {
     // State Variables
     address public immutable owner;
+    uint256 public immutable chainId;
+
+    OfferData[] public offers;
+
     string public greeting = "Building Unstoppable Apps!!!";
     bool public premium = false;
     uint256 public totalCounter = 0;
@@ -30,8 +78,9 @@ contract YourContract {
 
     // Constructor: Called once on contract deployment
     // Check packages/foundry/deploy/Deploy.s.sol
-    constructor(address _owner) {
+    constructor(address _owner, uint256 _chainId) {
         owner = _owner;
+        chainId = _chainId;
     }
 
     // Modifier: used to define a set of rules that must be met before or after a function is executed
@@ -41,6 +90,8 @@ contract YourContract {
         require(msg.sender == owner, "Not the Owner");
         _;
     }
+
+    function createOffer(OfferParams calldata params) {}
 
     /**
      * Function that allows anyone to change the state variable "greeting" of the contract and increase the counters
