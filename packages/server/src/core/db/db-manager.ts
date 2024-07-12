@@ -1,11 +1,7 @@
-import * as dotenv from "dotenv";
 import { knex, Knex } from "knex";
 import MySql from "serverless-mysql";
 import { log, LogLevel } from "../utils/logger";
 
-dotenv.config();
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const knexServerlessMysql = require("knex-serverless-mysql");
 
 export class DatabaseManager {
