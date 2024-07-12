@@ -4,6 +4,9 @@
 // import { Address } from "~~/components/scaffold-eth";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { TradeOfferCard } from "~~/components/TradeOfferCard";
+
+// Import TradeOfferCard
 
 type Trade = {
   id: number;
@@ -33,25 +36,7 @@ const Home = () => {
         status: "Waiting for a Participant",
         chain: "Polygon, Base",
       },
-      {
-        id: 2,
-        offer: "1x NFT",
-        receive: [{ amount: 3012, token: "USDT", chain: "Polygon" }],
-        send: [{ amount: 1, token: "NFT", chain: "Polygon" }],
-        status: "Completed",
-        chain: "Polygon",
-      },
-      {
-        id: 3,
-        offer: "1 ETH",
-        receive: [
-          { amount: 3012, token: "USDT", chain: "Polygon" },
-          { amount: 2975, token: "USDC", chain: "Base" },
-        ],
-        send: [{ amount: 1, token: "ETH", chain: "Polygon" }],
-        status: "Partially filled",
-        chain: "Polygon, Base",
-      },
+      // Add more trades as needed
     ]);
   }, []);
 
@@ -65,43 +50,14 @@ const Home = () => {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {trades.map(trade => (
-          <div key={trade.id} className="border p-6 rounded-lg shadow-lg bg-white">
-            <div className="mb-4">
-              <h2 className="text-xl font-bold mb-2">{trade.offer}</h2>
-              <div className="mb-2">
-                <p className="font-semibold">Receive:</p>
-                {trade.receive.map((item, index) => (
-                  <p key={index} className="text-gray-700">
-                    {item.amount} {item.token} on {item.chain}
-                  </p>
-                ))}
-              </div>
-              <div className="mb-2">
-                <p className="font-semibold">Send:</p>
-                {trade.send.map((item, index) => (
-                  <p key={index} className="text-gray-700">
-                    {item.amount} {item.token} on {item.chain}
-                  </p>
-                ))}
-              </div>
-              <p className="text-gray-600 mb-2">Status: {trade.status}</p>
-            </div>
-            <div className="flex justify-between items-center">
-              {trade.status === "Waiting for a Participant" && (
-                <Link href={`/join/${trade.id}`} passHref>
-                  <button className="bg-blue-500 text-white px-4 py-2 rounded w-full mb-2">Join Swap</button>
-                </Link>
-              )}
-              {trade.status === "Partially filled" && (
-                <Link href={`/join/${trade.id}`} passHref>
-                  <button className="bg-blue-500 text-white px-4 py-2 rounded w-full mb-2">Fill Order</button>
-                </Link>
-              )}
-              <Link href={`/trade/${trade.id}`} passHref>
-                <button className="bg-gray-500 text-white px-4 py-2 rounded w-full">View Swap</button>
-              </Link>
-            </div>
-          </div>
+          <TradeOfferCard
+            key={trade.id}
+            id={trade.id.toString()} // Ensure id is a string as expected by TradeOfferCardProps
+            offer={trade.offer}
+            receive={trade.receive.map(item => ({ ...item, amount: item.amount.toString() }))} // Convert amount to string
+            send={trade.send.map(item => ({ ...item, amount: item.amount.toString() }))} // Convert amount to string
+            status={trade.status}
+          />
         ))}
       </div>
     </div>

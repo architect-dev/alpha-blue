@@ -10,7 +10,7 @@ import { Toaster } from "react-hot-toast";
 import { http } from "viem";
 import { mainnet } from "viem/chains";
 import { WagmiProvider, createConfig } from "wagmi";
-import { Footer } from "~~/components/Footer";
+// import { Footer } from "~~/components/Footer";
 import { Header } from "~~/components/Header";
 import { ProgressBar } from "~~/components/scaffold-eth/ProgressBar";
 import { useNativeCurrencyPrice } from "~~/hooks/scaffold-eth";
@@ -32,7 +32,7 @@ const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
       <div className="flex flex-col min-h-screen">
         <Header />
         <main className="relative flex flex-col flex-1">{children}</main>
-        <Footer />
+        {/* <Footer /> */}
       </div>
       <Toaster />
     </>
