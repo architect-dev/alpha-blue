@@ -7,6 +7,53 @@ import "forge-std/console.sol";
 // Use openzeppelin to inherit battle-tested implementations (ERC20, ERC721, etc)
 // import "@openzeppelin/contracts/access/Ownable.sol";
 
+// STRUCTS / EVENTS / ERRORS
+
+struct ChainWallet {
+    uint256 chainId;
+    address wallet;
+}
+struct FillOption {
+    uint256 chainId;
+    address token;
+    uint256 amount;
+    uint256 destinationWallet;
+}
+
+// Stretch goals
+
+struct OfferData {
+    address owner;
+    // token offer
+    address tokenAddress;
+    uint256 tokenAmount;
+    // nft offer
+    address nftAddress;
+    uint256 nftId;
+    // settings
+    bool allowPartialFills;
+    uint256 expiration;
+    FillOption[] fillOptions;
+}
+
+struct FillData {
+    uint256 chain;
+    uint256 id;
+    uint256 orderChain;
+    uint256 orderId;
+    address token;
+    uint256 amount;
+}
+
+error OfferOwnerMismatch();
+error MissingOfferTokenOrNft();
+error MissingFillOptions();
+error InvalidFillChain();
+error InvalidFillChainToken();
+error ZeroAmount();
+
+// LIBRARIES
+
 library QuikMaff {
     function min(uint256 a, uint256 b) internal pure returns (uint256) {
         return a < b ? a : b;
@@ -23,48 +70,7 @@ library QuikMaff {
     }
 }
 
-struct ChainWallet {
-    uint256 chainId;
-    address wallet;
-}
-struct FillOption {
-    uint256 chainId;
-    address token;
-    uint256 amount;
-}
-
-struct OfferParams {
-    // user
-    ChainWallet[] bobWallets;
-    // token offer
-    address tokenAddress;
-    uint256 tokenAmount;
-    // nft offer
-    address nftAddress;
-    uint256 nftId;
-    // settings
-    bool allowPartialFills;
-    FillOption[] fillOptions;
-    uint256 duration;
-}
-
-struct OfferData {
-    uint256 chain;
-    uint256 id;
-    address token;
-    uint256 amount;
-    address nftAddress;
-    uint256 nftId;
-}
-
-struct FillData {
-    uint256 chain;
-    uint256 id;
-    uint256 orderChain;
-    uint256 orderId;
-    address token;
-    uint256 amount;
-}
+// MAIN CONTRACT
 
 contract AlphaBlue {
     using QuikMaff for uint256;
@@ -72,6 +78,9 @@ contract AlphaBlue {
     // State Variables
     address public immutable owner;
     uint256 public immutable chainId;
+    mapping(uint256 => bool) public availableChains;
+    mapping(uint256 => mapping(address => bool)) public availableChainTokens;
+    // TODO: Set available chains
 
     OfferData[] public offers;
 
@@ -86,6 +95,12 @@ contract AlphaBlue {
         string newGreeting,
         bool premium,
         uint256 value
+    );
+
+    event OfferCreated(
+        uint256 indexed chainId,
+        address indexed creator,
+        uint256 indexed offerId
     );
 
     // Constructor: Called once on contract deployment
@@ -103,7 +118,63 @@ contract AlphaBlue {
         _;
     }
 
-    function createOffer(OfferParams calldata params) {}
+    function createOffer(OfferData calldata params) public {
+        // @TEST offer owner mismatch -- revert OfferOwnerMismatch;
+        if (msg.sender != params.owner) revert OfferOwnerMismatch();
+
+        // Validate offer
+        // @TEST if both token and nft are empty -- revert MissingOfferTokenOrNft();
+        // @TEST if offer token doesn't exist on current chain - revert InvalidFillChainToken();
+        if (
+            params.tokenAddress == address(0) && params.nftAddress == address(0)
+        ) revert MissingOfferTokenOrNft();
+        if (params.tokenAddress != address(0)) {
+            if (availableChainTokens[chainId][params.tokenAddress] != true)
+                revert InvalidFillChainToken();
+        } else {
+            // NFT
+            // @TODO: VALIDATE THIS
+        }
+
+        // Validate offer fills
+        // @TEST empty fill options -- revert MissingFillOptions;
+        // @TEST fill option chain invalid -- revert InvalidFillChain;
+        // @TEST fill option chain valid, but token invalid -- revert InvalidFillChainToken;
+        // @TEST fill option chain & token valid, but value 0 -- revert ZeroAmount;
+        if (params.fillOptions.length == 0) revert MissingFillOptions();
+        for (uint256 i = 0; i < params.fillOptions.length; i++) {
+            if (availableChains[params.fillOptions[i].chainId] != true)
+                revert InvalidFillChain();
+            if (
+                availableChainTokens[params.fillOptions[i].chainId][
+                    params.fillOptions[i].token
+                ] != true
+            ) revert InvalidFillChainToken();
+            if (params.fillOptions[i].amount == 0) revert ZeroAmount();
+        }
+
+        // Take deposit
+        // @TODO: If offer is token offer (params.tokenAddress != address(0)) then take a 1% deposit
+        // 	validate approval
+        //  use ERC20.safeTransferFrom to transfer the tokens to this contract
+
+        uint256 offerId = offers.length;
+        OfferData storage offer = offers[offerId];
+
+        offer.tokenAddress = params.tokenAddress;
+        offer.tokenAmount = params.tokenAmount;
+        offer.nftAddress = params.nftAddress;
+        offer.nftId = params.nftId;
+
+        offer.allowPartialFills = params.allowPartialFills;
+        offer.expiration = params.expiration;
+
+        for (uint256 i = 0; i < params.fillOptions.length; i++) {
+            offer.fillOptions.push(params.fillOptions[i]);
+        }
+
+        emit OfferCreated(chainId, offer.owner, offerId);
+    }
 
     /**
      * Function that allows anyone to change the state variable "greeting" of the contract and increase the counters
