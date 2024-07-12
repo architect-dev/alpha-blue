@@ -14,7 +14,7 @@ struct FillOption {
     uint256 chainId;
     address tokenAddress;
     uint256 tokenAmount;
-    uint256 destWallet;
+    uint256 destAddress;
 }
 
 struct OfferData {
@@ -38,11 +38,14 @@ struct OfferStatus {
     OfferFillData[] offerFills;
 }
 struct OfferFillData {
+    uint256 fillId;
+    uint256 fillChain;
     address fillTokenAddress;
     uint256 fillTokenAmount;
     uint256 partialBP;
     uint256 deadline;
     address adaDestAddress;
+    address bobDestAddress;
     bool pending;
 }
 
@@ -352,12 +355,15 @@ contract AlphaBlueOfferer is Ownable {
 
         // Fill token
         bool fillMatched;
+        address fillBobAddress;
         for (uint256 i = 0; i < offer.fillOptions.length; i++) {
             if (fillMatched) continue;
             if (offer.fillOptions[i].chainId != ccipBlue.fillChain) continue;
             if (offer.fillOptions[i].tokenAddress != ccipBlue.fillTokenAddress)
                 continue;
+
             fillMatched = true;
+            fillBobAddress = offer.fillOptions[i].destAddress;
 
             // Validate token amount matches
             if (
@@ -372,11 +378,14 @@ contract AlphaBlueOfferer is Ownable {
         uint256 offerFillId = offerStatuses[ccipBlue.offerId].offerFills.length;
         offerStatuses[ccipBlue.offerId].offerFills.push(
             OfferFillData({
+                fillId: ccipBlue.fillId,
+                fillChain: ccipBlue.fillChain,
                 fillTokenAddress: ccipBlue.fillTokenAddress,
                 fillTokenAmount: ccipBlue.fillTokenAmount,
                 partialBP: ccipBlue.partialBP,
                 deadline: ccipBlue.deadline,
                 adaDestAddress: ccipBlue.adaDestAddress,
+                bobDestAddress: fillBobAddress,
                 pending: true
             })
         );
@@ -389,6 +398,7 @@ contract AlphaBlueOfferer is Ownable {
         // ===
 
         offerStatuses[ccipBlue.offerId].pendingBP += ccipBlue.partialBP;
+        offerStatuses[ccipBlue.offerId].offerFills[offerFillId].pending = true;
         _handleOfferFill(ccipBlue.offerId, offerFillId);
 
         return ErrorType.NONE;
@@ -428,9 +438,11 @@ contract AlphaBlueOfferer is Ownable {
                     address(this),
                     offerTokenPartialAmount
                 );
+
+                // Switch from pending to completed
                 offerFill.pending = false;
-                offerStatus.filledBP += offerFill.partialBP;
                 offerStatus.pendingBP -= offerFill.partialBP;
+                offerStatus.filledBP += offerFill.partialBP;
 
                 // Transfer tokens to ada
                 IERC20(offer.tokenAddress).safeTransfer(
@@ -439,6 +451,26 @@ contract AlphaBlueOfferer is Ownable {
                 );
 
                 // @TODO: send CXFILL to allow bob to withdraw on ada's chain
+                _sendCCIP(
+                    CCIPBlue({
+                        messageType: MessageType.CXFILL,
+                        bobDestAddress: offerFill.bobDestAddress,
+                        adaDestAddress: address(0),
+                        offerId: offerId,
+                        offerChain: chainId,
+                        fillId: offerFill.fillId,
+                        fillChain: offerFill.fillChain,
+                        offerTokenAddress: address(0),
+                        offerTokenAmount: 0,
+                        offerNftAddress: address(0),
+                        offerNftId: 0,
+                        fillTokenAddress: address(0),
+                        fillTokenAmount: 0,
+                        partialBP: 0,
+                        deadline: 0,
+                        errorType: ErrorType.NONE
+                    })
+                );
             }
         }
 
