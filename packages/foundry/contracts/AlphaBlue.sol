@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 // @TODO: Remove
 import "forge-std/console.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 // STRUCTS / EVENTS / ERRORS
 
@@ -93,6 +94,7 @@ library QuikMaff {
 
 contract AlphaBlueOfferer is Ownable {
     using QuikMaff for uint256;
+    using SafeERC20 for IERC20;
 
     // State Variables
     uint256 public immutable chainId;
