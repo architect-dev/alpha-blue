@@ -95,6 +95,7 @@ function main() {
 	})
 
 	const TARGET_DIR = '../nextjs/contracts/'
+	const SERVER_DIR = '../server/src/core/contracts/'
 
 	const fileContent = Object.entries(allGeneratedContracts).reduce((content, [chainId, chainConfig]) => {
 		return `${content}${parseInt(chainId).toFixed(0)}:${JSON.stringify(chainConfig, null, 2)},`
@@ -105,6 +106,20 @@ function main() {
 	}
 	fs.writeFileSync(
 		`${TARGET_DIR}deployedContracts.ts`,
+		prettier.format(
+			`${generatedContractComment} import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract"; \n\n
+ const deployedContracts = {${fileContent}} as const; \n\n export default deployedContracts satisfies GenericContractsDeclaration`,
+			{
+				parser: 'typescript',
+			}
+		)
+	)
+
+	if (!fs.existsSync(SERVER_DIR)) {
+		fs.mkdirSync(SERVER_DIR)
+	}
+	fs.writeFileSync(
+		`${SERVER_DIR}deployedContracts.ts`,
 		prettier.format(
 			`${generatedContractComment} import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract"; \n\n
  const deployedContracts = {${fileContent}} as const; \n\n export default deployedContracts satisfies GenericContractsDeclaration`,
