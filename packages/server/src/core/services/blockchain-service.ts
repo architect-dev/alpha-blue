@@ -150,10 +150,11 @@ export async function getEventLogs(
 
     let firstBlock: number;
 
-    if (blockchain.lastReadEventsBlock < 1) {
-        firstBlock = endBlock - 500;
-    } else if (endBlock - blockchain.lastReadEventsBlock > 500) {
-        firstBlock = endBlock - 500;
+    if (
+        blockchain.lastReadEventsBlock == 0 ||
+        endBlock - blockchain.lastReadEventsBlock > 2000
+    ) {
+        firstBlock = endBlock - 2000;
     } else {
         firstBlock = blockchain.lastReadEventsBlock + 1;
     }
