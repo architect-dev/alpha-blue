@@ -1,20 +1,14 @@
-import { EventLog } from "ethers";
-
 export enum OrderStatus {
     "Active" = 1,
-    "Filled" = 2,
+    "Expired" = 2,
     "Canceled" = 3,
-    "Expired" = 4,
+    "Filled" = 4,
 }
 export enum FillStatus {
-    "Filled" = 1,
-    "FillSendFail" = 2,
-    "PendingWaitingFunds" = 3,
-    "Invalid" = 4,
-    "Expired" = 5,
-    "Withdrawn" = 6,
-    "XFillSendFail" = 7,
-    "Complete" = 8,
+    "Pending" = 1,
+    "Invalid" = 2,
+    "Succeeded" = 3,
+    "Expired" = 4,
 }
 
 export type BlockchainNetwork = {
@@ -54,7 +48,6 @@ export type Order = {
     tokenMetadata: TokenMetadata;
     tokenAmount: string;
     expirationDate: number;
-    transactionId: string;
 
     updatedAt: number;
     createdAt: number;
@@ -82,7 +75,7 @@ export type PotentialFill = {
 
 export type NewPotentialFill = Omit<
     PotentialFill,
-    "pkId" | "updatedAt" | "createdAt"
+    "pkId" | "updatedAt" | "createdAt" | "orderPkId"
 >;
 
 export type FillHistory = {
@@ -94,7 +87,7 @@ export type FillHistory = {
     tokenMetadata: TokenMetadata;
     tokenAmount: string;
     fillStatus: FillStatus;
-    transactionId: string;
+    expirationDate: number;
 
     updatedAt: number;
     createdAt: number;
@@ -104,22 +97,3 @@ export type NewFillHistory = Omit<
     FillHistory,
     "pkId" | "updatedAt" | "createdAt"
 >;
-
-export type TransactionResponse = {
-    blockNumber: number;
-    from: string;
-    success: boolean;
-    to: string;
-};
-
-export type CurrentBlockResponse = {
-    result: string;
-    id: number;
-};
-
-export type ContractLogResponse = {
-    from: string;
-    logs: EventLog[];
-    timeStamp: number;
-    to: string;
-};

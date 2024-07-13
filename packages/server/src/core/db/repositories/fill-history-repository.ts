@@ -1,21 +1,72 @@
+import { Knex } from "knex";
 import { DatabaseManager } from "src/core/db/db-manager";
 import { getBlockchainNetwork } from "src/core/db/repositories/blockchain-repository";
 import { getTokenMetadata } from "src/core/db/repositories/token-metadata-repository";
-import { fillHistoryDbModelToFillHistory } from "src/core/mappers/order-fill-mappers";
+import {
+    fillHistoryDbModelToFillHistory,
+    newFillHistoryToFillHistoryDbModel,
+} from "src/core/mappers/order-fill-mappers";
 import { FillHistoryDbModel } from "src/core/models/db-models";
-import { FillHistory } from "src/core/models/domain-models";
+import { FillHistory, NewFillHistory } from "src/core/models/domain-models";
 
 const fillHistoryTable = "fill_history";
 
-export async function getFillHistory(
-    orderPkId: number
-): Promise<FillHistory[]> {
+const withPkId = (
+    queryBuilder: Knex.QueryBuilder,
+    options: {
+        pkId?: number;
+    }
+) => {
+    if (options.pkId) {
+        void queryBuilder.where(`${fillHistoryTable}.pk_id`, options.pkId);
+    }
+};
+
+const withFillId = (
+    queryBuilder: Knex.QueryBuilder,
+    options: {
+        fillId?: string;
+    }
+) => {
+    if (options.fillId) {
+        void queryBuilder.where(`${fillHistoryTable}.fill_id`, options.fillId);
+    }
+};
+
+const withOrderPkId = (
+    queryBuilder: Knex.QueryBuilder,
+    options: {
+        orderPkId?: number;
+    }
+) => {
+    if (options.orderPkId) {
+        void queryBuilder.where(
+            `${fillHistoryTable}.order_pk_id`,
+            options.orderPkId
+        );
+    }
+};
+
+export async function getFillHistories(options: {
+    orderPkId?: number;
+    pkId?: number;
+    fillId?: string;
+}): Promise<FillHistory[]> {
     const databaseConnection = DatabaseManager.getInstance();
+    const { orderPkId, fillId, pkId } = options;
 
     const dbFillHistories = await databaseConnection
         .select<FillHistoryDbModel[]>()
         .from(fillHistoryTable)
-        .where("order_pk_id", orderPkId);
+        .modify(withPkId, {
+            pkId,
+        })
+        .modify(withFillId, {
+            fillId,
+        })
+        .modify(withOrderPkId, {
+            orderPkId,
+        });
 
     const fillHistories: FillHistory[] = [];
 
@@ -37,4 +88,43 @@ export async function getFillHistory(
     }
 
     return fillHistories;
+}
+
+export async function getFillHistory(options: {
+    orderPkId?: number;
+    pkId?: number;
+    fillId?: string;
+}): Promise<FillHistory> {
+    const fills = await getFillHistories(options);
+
+    if (fills.length != 1) {
+        throw new Error(`Fills has length ${fills.length}. Expected 1`);
+    }
+
+    return fills[0];
+}
+
+export async function fetchFillHistory(options: {
+    orderPkId?: number;
+    pkId?: number;
+    fillId?: string;
+}): Promise<FillHistory | undefined> {
+    const fills = await getFillHistories(options);
+
+    if (fills.length == 0) return undefined;
+    else return fills[0];
+}
+
+export async function insertNewFill(
+    newFill: NewFillHistory
+): Promise<FillHistory> {
+    const knex = DatabaseManager.getInstance();
+
+    const fillDbAttributes = newFillHistoryToFillHistoryDbModel(newFill);
+
+    const insertedPkId = await knex
+        .insert(fillDbAttributes)
+        .into(fillHistoryTable);
+
+    return await getFillHistory({ pkId: insertedPkId[0] });
 }

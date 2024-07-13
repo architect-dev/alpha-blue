@@ -97,7 +97,6 @@ export async function up(knex: Knex) {
         table.string("fill_ccip_message_id", 100).nullable();
         table.string("xfill_ccip_message_id", 100).nullable();
         table.integer("order_date").notNullable();
-        table.string("transaction_id").notNullable();
         table.integer("filled_date").nullable();
 
         createForeignKey(table, "network_id", "id", blockchainNetworkTable, {
@@ -156,7 +155,7 @@ export async function up(knex: Knex) {
 
         table.string("token_amount", 100).notNullable();
         table.integer("fill_status").notNullable();
-        table.string("transaction_id").notNullable();
+        table.integer("expiration_date").notNullable();
         createdAtUpdatedAtRows(table, knex);
     });
 }

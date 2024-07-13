@@ -43,10 +43,25 @@ const withNetworkId = (
     }
 };
 
+const withAddress = (
+    queryBuilder: Knex.QueryBuilder,
+    options: {
+        address?: number;
+    }
+) => {
+    if (options.address) {
+        void queryBuilder.where(
+            `${tokenMetadataTable}.token_address`,
+            options.address
+        );
+    }
+};
+
 export async function getTokenMetadata(options: {
     pkId?: number;
     symbol?: string;
     networkId?: number;
+    tokenAddress?: string;
 }): Promise<TokenMetadata> {
     const databaseConnection = DatabaseManager.getInstance();
 
@@ -61,6 +76,9 @@ export async function getTokenMetadata(options: {
         })
         .modify(withSymbol, {
             symbol: options?.symbol,
+        })
+        .modify(withAddress, {
+            symbol: options?.tokenAddress,
         });
 
     let dbTokenMetadata: TokenMetadataDbModel;

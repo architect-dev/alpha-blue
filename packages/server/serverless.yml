@@ -10,14 +10,23 @@ custom:
         linting: false
 
 functions:
-    create-order:
-        handler: src/handlers/create-order.createOrder
+    refresh-orders:
+        handler: src/handlers/refresh-order.refreshOrder
         timeout: 25
         memorySize: 1028
         events:
             - httpApi:
-                  path: "/api/v1/create"
+                  path: "/api/v1/load"
                   method: "POST"
+
+    get-orders:
+        handler: src/handlers/get-orders.getOrders
+        timeout: 25
+        memorySize: 1028
+        events:
+            - httpApi:
+                  path: "/api/v1/order"
+                  method: "GET"
 
 plugins:
     - serverless-bundle

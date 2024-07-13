@@ -32,7 +32,6 @@ export function orderDbModelToOrder(
         tokenMetadata: tokenMetadata,
         tokenAmount: orderDbModel.token_amount,
         expirationDate: orderDbModel.expiration_date,
-        transactionId: orderDbModel.transaction_id,
         updatedAt: dateStringToEpochSeconds(orderDbModel.updated_at),
         createdAt: dateStringToEpochSeconds(orderDbModel.created_at),
     };
@@ -54,6 +53,5 @@ export function newOrderToOrderDbModel(
         token_pk_id: orderDbModel.tokenMetadata.pkId,
         token_amount: orderDbModel.tokenAmount,
         expiration_date: orderDbModel.expirationDate,
-        transaction_id: orderDbModel.transactionId,
     };
 }
