@@ -91,6 +91,7 @@ struct FillData {
     uint256 fillTokenAmount;
     uint256 deadline;
     address adaDestAddress;
+    uint256 partialBP;
     FillStatus status;
     ErrorType errorType;
 }
@@ -326,6 +327,7 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
         offer.nftId = params.nftId;
 
         offer.allowPartialFills = params.allowPartialFills;
+        offer.created = block.timestamp;
         offer.expiration = params.expiration;
 
         offer.depositTokenAddress = params.tokenAddress != address(0)
@@ -659,6 +661,7 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
         fill.offerId = params.offerId;
         fill.fillTokenAddress = params.fillTokenAddress;
         fill.fillTokenAmount = params.fillTokenAmount;
+        fill.partialBP = params.partialBP;
         fill.adaDestAddress = params.adaDestAddress == address(0)
             ? msg.sender
             : params.adaDestAddress;
@@ -684,6 +687,8 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
                 errorType: ErrorType.NONE
             })
         );
+
+        emit FillCreated(chainId, msg.sender, fillId);
     }
     function _handleCXFILL(
         uint256 offerChainId,

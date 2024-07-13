@@ -438,6 +438,11 @@
         "internalType": "address"
       },
       {
+        "name": "partialBP",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
         "name": "status",
         "type": "uint8",
         "internalType": "enum FillStatus"
@@ -513,6 +518,11 @@
             "name": "adaDestAddress",
             "type": "address",
             "internalType": "address"
+          },
+          {
+            "name": "partialBP",
+            "type": "uint256",
+            "internalType": "uint256"
           },
           {
             "name": "status",
@@ -961,6 +971,31 @@
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "event",
+    "name": "FillCreated",
+    "inputs": [
+      {
+        "name": "chainId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "filler",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "fillId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
   },
   {
     "type": "event",

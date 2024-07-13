@@ -31,6 +31,8 @@ dataSources:
           handler: handleOfferDeadlined
         - event: OfferFilled(indexed uint256,indexed address,indexed uint256)
           handler: handleOfferFilled
+        - event: FillCreated(indexed uint256,indexed address,indexed uint256)
+          handler: handleFillCreated
         - event: FillFailed(indexed uint256,indexed address,indexed uint256)
           handler: handleFillFailed
         - event: FillXFilled(indexed uint256,indexed address,indexed uint256)

@@ -1,17 +1,3 @@
-enum OfferStatus {
-	OPEN
-	DEADLINED
-	CANCELLED
-	FILLED
-}
-
-enum FillStatus {
-	PENDING
-	INVALID
-	SUCCEEDED
-	DEADLINED
-}
-
 type OfferFill @entity {
 	id: ID!
 	fillId: BigInt!
@@ -39,20 +25,20 @@ type Offer @entity {
 	depositAmount: BigInt!
 	filledBP: Int!
 	pendingBP: Int!
-	status: OfferStatus!
+	status: Int!
 	offerFills: [OfferFill!]!
 }
 
 type Fill @entity {
 	id: ID!
+	owner: Bytes!
 	offerChain: BigInt!
 	offerId: BigInt!
-	offerTokenAddress: Bytes!
-	offerTokenAmount: BigInt!
-	offerNftAddress: Bytes!
-	offerNftId: BigInt!
 	fillTokenAddress: Bytes!
 	fillTokenAmount: BigInt!
+	deadline: BigInt!
 	adaDestAddress: Bytes!
 	partialBP: BigInt!
+	status: Int!
+	errorType: Int!
 }

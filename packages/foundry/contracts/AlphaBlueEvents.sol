@@ -38,4 +38,9 @@ interface AlphaBlueEvents {
         address indexed filler,
         uint256 indexed fillId
     );
+    event FillCreated(
+        uint256 indexed chainId,
+        address indexed filler,
+        uint256 indexed fillId
+    );
 }
