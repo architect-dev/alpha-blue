@@ -3675,7 +3675,7 @@ const deployedContracts = {
       inheritedFunctions: {},
     },
     alphaBlue: {
-      address: "0x1f10F3Ba7ACB61b2F50B9d6DdCf91a6f787C0E82",
+      address: "0x01c1DeF3b91672704716159C9041Aeca392DdFfb",
       abi: [
         {
           type: "constructor",
