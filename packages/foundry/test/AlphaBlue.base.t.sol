@@ -45,6 +45,9 @@ abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
     AlphaBlue public alphaBlueBase;
     AlphaBlue public alphaBlueCelo;
 
+    uint64 public mockChainSelector;
+    IRouterClient public router;
+
     // SETUP
 
     function setLabels() public {
@@ -88,10 +91,10 @@ abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
             ,
             // WETH9 wrappedNative_
             LinkToken linkToken, // BurnMintERC677Helper ccipBnM_
+            // BurnMintERC677Helper ccipLnM_
             ,
 
-        ) = // BurnMintERC677Helper ccipLnM_
-            ccipLocalSimulator.configuration();
+        ) = ccipLocalSimulator.configuration();
 
         mockChainSelector = chainSelector_;
         router = sourceRouter;
