@@ -1,0 +1,58 @@
+enum OfferStatus {
+	OPEN
+	DEADLINED
+	CANCELLED
+	FILLED
+}
+
+enum FillStatus {
+	PENDING
+	INVALID
+	SUCCEEDED
+	DEADLINED
+}
+
+type OfferFill @entity {
+	id: ID!
+	fillId: BigInt!
+	fillChain: BigInt!
+	fillTokenAddress: Bytes!
+	fillTokenAmount: BigInt!
+	partialBP: Int!
+	deadline: BigInt!
+	adaDestAddress: Bytes!
+	bobDestAddress: Bytes!
+	pending: Boolean!
+}
+
+type Offer @entity {
+	id: ID!
+	owner: Bytes!
+	tokenAddress: Bytes!
+	tokenAmount: BigInt!
+	nftAddress: Bytes!
+	nftId: BigInt!
+	allowPartialFills: Boolean!
+	created: BigInt!
+	expiration: BigInt!
+	depositTokenAddress: Bytes!
+	depositAmount: BigInt!
+	filledBP: Int!
+	pendingBP: Int!
+	status: OfferStatus!
+	offerFills: [OfferFill!]!
+}
+
+type Fill @entity {
+	id: ID!
+	offerChain: BigInt!
+	offerId: BigInt!
+	offerTokenAddress: Bytes!
+	offerTokenAmount: BigInt!
+	offerNftAddress: Bytes!
+	offerNftId: BigInt!
+	fillTokenAddress: Bytes!
+	fillTokenAmount: BigInt!
+	adaDestAddress: Bytes!
+	partialBP: BigInt!
+}

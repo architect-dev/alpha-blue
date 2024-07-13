@@ -14,16 +14,16 @@ contract DeployScript is ScaffoldETHDeploy {
     BasicERC20 public WBTC;
     BasicERC20 public USDC;
     BasicERC20 public BNB;
-    BasicERC721 public mockNFT1;
+    BasicERC721 public MOCC;
 
     uint256 public nftWethDeposit = 0.01e18;
 
-    uint256 public arbChainId = 1;
-    uint256 public baseChainId = 2;
-    uint256 public celoChainId = 3;
-    AlphaBlue public alphaBlueArb;
-    AlphaBlue public alphaBlueBase;
-    AlphaBlue public alphaBlueCelo;
+    uint256 public arbChainId = 421614;
+    uint256 public baseChainId = 84532;
+    uint256 public celoChainId = 44787;
+    AlphaBlue public alphaBlue;
+    // AlphaBlue public alphaBlueArb;
+    // AlphaBlue public alphaBlueCelo;
 
     function run() external {
         uint256 deployerPrivateKey = setupLocalhostEnv();
@@ -35,28 +35,46 @@ contract DeployScript is ScaffoldETHDeploy {
         vm.startBroadcast(deployerPrivateKey);
 
         WETH = new BasicERC20("WETH", "WETH", 18);
-        console.log("WETH DEPLOYMENT", address(WETH));
+        _markDeployment("WETH", address(WETH));
         WBTC = new BasicERC20("WBTC", "WBTC", 8);
-        console.log("WBTC DEPLOYMENT", address(WBTC));
+        _markDeployment("WBTC", address(WBTC));
         USDC = new BasicERC20("USDC", "USDC", 6);
-        console.log("USDC DEPLOYMENT", address(USDC));
+        _markDeployment("USDC", address(USDC));
         BNB = new BasicERC20("BNB", "BNB", 18);
-        console.log("BNB DEPLOYMENT", address(BNB));
+        _markDeployment("BNB", address(BNB));
 
-        alphaBlueArb = new AlphaBlue(arbChainId, address(WETH), nftWethDeposit);
-        console.log("alphaBlueArb DEPLOYMENT", address(alphaBlueArb));
-        alphaBlueBase = new AlphaBlue(
-            baseChainId,
-            address(WETH),
-            nftWethDeposit
+        MOCC = new BasicERC721(
+            "MOCC",
+            "MOCC",
+            "https://tokenBaseURI",
+            "https://contractURI"
         );
-        console.log("alphaBlueBase DEPLOYMENT", address(alphaBlueBase));
-        alphaBlueCelo = new AlphaBlue(
-            celoChainId,
+        _markDeployment("MOCC", address(MOCC));
+
+        alphaBlue = new AlphaBlue(
+            arbChainId,
             address(WETH),
-            nftWethDeposit
+            nftWethDeposit,
+            0xD3b06cEbF099CE7DA4AcCf578aaebFDBd6e88a93,
+            0xE4aB69C077896252FAFBD49EFD26B5D171A32410
         );
-        console.log("alphaBlueCelo DEPLOYMENT", address(alphaBlueCelo));
+        _markDeployment("alphaBlue", address(alphaBlue));
+        // alphaBlueBase = new AlphaBlue(
+        //     baseChainId,
+        //     address(WETH),
+        //     nftWethDeposit,
+        //     address(0),
+        //     address(0)
+        // );
+        // _markDeployment("alphaBlueBase", address(alphaBlueBase));
+        // alphaBlueCelo = new AlphaBlue(
+        //     celoChainId,
+        //     address(WETH),
+        //     nftWethDeposit,
+        //     address(0),
+        //     address(0)
+        // );
+        // _markDeployment("alphaBlueCelo", address(alphaBlueCelo));
 
         _setUpAlphaBlueChains();
 
@@ -72,24 +90,14 @@ contract DeployScript is ScaffoldETHDeploy {
         exportDeployments();
     }
 
+    function _markDeployment(string memory name, address addr) internal {
+        deployments.push(Deployment({name: name, addr: addr}));
+        console.log("DEPLOYMENT:", name, addr);
+    }
+
     // function test() public { }
 
     function _setUpAlphaBlueChains() internal {
-        uint256[] memory chainsId = new uint256[](3);
-        chainsId[0] = arbChainId;
-        chainsId[1] = baseChainId;
-        chainsId[2] = celoChainId;
-
-        bool[] memory chainsValid = new bool[](3);
-        chainsValid[0] = true;
-        chainsValid[1] = true;
-        chainsValid[2] = true;
-
-        address[] memory chainsContract = new address[](3);
-        chainsContract[0] = address(alphaBlueArb);
-        chainsContract[1] = address(alphaBlueBase);
-        chainsContract[2] = address(alphaBlueCelo);
-
         address[] memory tokens = new address[](4);
         tokens[0] = address(WETH);
         tokens[1] = address(WBTC);
@@ -102,70 +110,70 @@ contract DeployScript is ScaffoldETHDeploy {
         tokensValid[2] = true;
         tokensValid[3] = true;
 
-        alphaBlueArb.setChainAndTokens(
-            arbChainId,
-            true,
-            address(alphaBlueArb),
-            tokens,
-            tokensValid
-        );
-        alphaBlueArb.setChainAndTokens(
+        alphaBlue.setChainAndTokens(
             baseChainId,
             true,
-            address(alphaBlueBase),
+            address(alphaBlue),
             tokens,
             tokensValid
         );
-        alphaBlueArb.setChainAndTokens(
-            celoChainId,
-            true,
-            address(alphaBlueCelo),
-            tokens,
-            tokensValid
-        );
+        // alphaBlueArb.setChainAndTokens(
+        //     baseChainId,
+        //     true,
+        //     address(alphaBlueBase),
+        //     tokens,
+        //     tokensValid
+        // );
+        // alphaBlueArb.setChainAndTokens(
+        //     celoChainId,
+        //     true,
+        //     address(alphaBlueCelo),
+        //     tokens,
+        //     tokensValid
+        // );
 
-        alphaBlueBase.setChainAndTokens(
-            arbChainId,
-            true,
-            address(alphaBlueArb),
-            tokens,
-            tokensValid
-        );
-        alphaBlueBase.setChainAndTokens(
-            baseChainId,
-            true,
-            address(alphaBlueBase),
-            tokens,
-            tokensValid
-        );
-        alphaBlueBase.setChainAndTokens(
-            celoChainId,
-            true,
-            address(alphaBlueCelo),
-            tokens,
-            tokensValid
-        );
+        // alphaBlueBase.setChainAndTokens(
+        //     arbChainId,
+        //     true,
+        //     address(alphaBlueArb),
+        //     tokens,
+        //     tokensValid
+        // );
+        // alphaBlueBase.setChainAndTokens(
+        //     baseChainId,
+        //     true,
+        //     address(alphaBlueBase),
+        //     tokens,
+        //     tokensValid
+        // );
+        // alphaBlueBase.setChainAndTokens(
+        //     celoChainId,
+        //     true,
+        //     address(alphaBlueCelo),
+        //     tokens,
+        //     tokensValid
+        // );
 
-        alphaBlueCelo.setChainAndTokens(
-            arbChainId,
-            true,
-            address(alphaBlueArb),
-            tokens,
-            tokensValid
-        );
-        alphaBlueCelo.setChainAndTokens(
-            baseChainId,
-            true,
-            address(alphaBlueBase),
-            tokens,
-            tokensValid
-        );
-        alphaBlueCelo.setChainAndTokens(
-            celoChainId,
-            true,
-            address(alphaBlueCelo),
-            tokens,
-            tokensValid
-        );
+        // alphaBlueCelo.setChainAndTokens(
+        //     arbChainId,
+        //     true,
+        //     address(alphaBlueArb),
+        //     tokens,
+        //     tokensValid
+        // );
+        // alphaBlueCelo.setChainAndTokens(
+        //     baseChainId,
+        //     true,
+        //     address(alphaBlueBase),
+        //     tokens,
+        //     tokensValid
+        // );
+        // alphaBlueCelo.setChainAndTokens(
+        //     celoChainId,
+        //     true,
+        //     address(alphaBlueCelo),
+        //     tokens,
+        //     tokensValid
+        // );
     }
 }

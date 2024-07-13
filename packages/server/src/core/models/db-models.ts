@@ -22,7 +22,6 @@ export type TokenMetadataDbModel = {
 export type OrderDbModel = {
     pk_id: number;
     order_id: string;
-    transaction_id: string;
     order_wallet_address: string;
     allow_partial_fill: boolean;
     fill_ccip_message_id?: string;
@@ -61,7 +60,7 @@ export type FillHistoryDbModel = {
     token_pk_id: number;
     token_amount: string;
     fill_status: number;
-    transaction_id: string;
+    expiration_date: number;
 
     created_at: string;
     updated_at: string;

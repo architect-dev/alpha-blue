@@ -2,9 +2,11 @@
 pragma solidity ^0.8.20;
 
 // @TODO: Remove
-import "forge-std/console.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "./AlphaBlueEvents.sol";
+import {IRouterClient} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IRouterClient.sol"; // Allows us to send CCIP messages
+import {CCIPReceiver, Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/applications/CCIPReceiver.sol"; // Allows us to receive CCIP messages
 
 // STRUCTS / EVENTS / ERRORS
 
@@ -44,6 +46,7 @@ struct OfferData {
     uint256 nftId;
     // settings
     bool allowPartialFills;
+    uint256 created;
     uint256 expiration;
     FillOption[] fillOptions;
     // Deposit
@@ -179,45 +182,8 @@ error NotPassedDeadline();
 error AlreadyDeadlined();
 error CannotCancelWithPending();
 error OfferStatusNotOpen();
-
-interface AlphaBlueEvents {
-    // EVENTS
-    event OfferCreated(
-        uint256 indexed chainId,
-        address indexed creator,
-        uint256 indexed offerId
-    );
-    event OfferCancelled(
-        uint256 indexed chainId,
-        address indexed creator,
-        uint256 indexed offerId
-    );
-    event OfferDeadlined(
-        uint256 indexed chainId,
-        address indexed creator,
-        uint256 indexed offerId
-    );
-    event OfferFilled(
-        uint256 indexed chainId,
-        address indexed creator,
-        uint256 indexed offerId
-    );
-    event FillFailed(
-        uint256 indexed chainId,
-        address indexed filler,
-        uint256 indexed fillId
-    );
-    event FillXFilled(
-        uint256 indexed chainId,
-        address indexed filler,
-        uint256 indexed fillId
-    );
-    event FillDeadlined(
-        uint256 indexed chainId,
-        address indexed filler,
-        uint256 indexed fillId
-    );
-}
+error UnsupportedChainId();
+error InsufficientLinkBalance();
 
 // LIBRARIES
 
@@ -239,7 +205,7 @@ library QuikMaff {
 
 // MAIN CONTRACT
 
-contract AlphaBlue is Ownable, AlphaBlueEvents {
+contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
     using QuikMaff for uint256;
     using SafeERC20 for IERC20;
 
@@ -254,39 +220,25 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
     address public weth;
     uint256 public nftWethDeposit;
 
+    IRouterClient public immutable router; // chainlink ccip router
+    IERC20 public immutable linkToken;
+
     // ADMIN ACTIONS
 
     constructor(
         uint256 _chainId,
         address _weth,
-        uint256 _nftWethDeposit
-    ) Ownable(msg.sender) {
+        uint256 _nftWethDeposit,
+        address _router,
+        address _link
+    ) Ownable(msg.sender) CCIPReceiver(_router) {
         chainId = _chainId;
         weth = _weth;
         nftWethDeposit = _nftWethDeposit;
+        router = IRouterClient(_router);
+        linkToken = IERC20(_link);
     }
 
-    function setChainsAndTokens(
-        uint256[] calldata chainsId,
-        bool[] calldata chainsValid,
-        address[] calldata chainsContract,
-        address[][] calldata tokens,
-        bool[][] calldata tokensValid
-    ) public onlyOwner {
-        uint256 _chainId;
-        for (uint256 i = 0; i < chainsId.length; i++) {
-            _chainId = chainsId[i];
-            chainData[_chainId].valid = chainsValid[i];
-            chainData[_chainId].chainId = _chainId;
-            chainData[_chainId].contractAddress = chainsContract[i];
-
-            for (uint256 j = 0; j < tokens[_chainId].length; j++) {
-                chainTokens[_chainId][tokens[_chainId][j]] = tokensValid[
-                    _chainId
-                ][j];
-            }
-        }
-    }
     function setChainAndTokens(
         uint256 _chainId,
         bool chainsValid,
@@ -831,24 +783,119 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
     //
 
     function _sendCCIP(CCIPBlue memory ccipBlue) internal {
-        // Same chain swap
+        // Same chain message
         if (ccipBlue.offerChain == ccipBlue.fillChain) {
-            receiveCCIP(ccipBlue);
+            Client.Any2EVMMessage memory sameChainMessage = Client
+                .Any2EVMMessage({
+                    messageId: bytes32(0), // No messageId
+                    sourceChainSelector: uint64(
+                        _getChainSelector(ccipBlue.offerChain)
+                    ),
+                    sender: abi.encode(address(this)),
+                    data: abi.encode(ccipBlue),
+                    destTokenAmounts: new Client.EVMTokenAmount[](0) // Sending no tokens directly
+                });
+            // Infinite loop here:
+            // _ccipReceive likely calls _handleCFILL
+            // _handleCFILL might encounter an error and call _sendCCIP again
+            // _sendCCIP sees it's a same-chain message and calls _ccipReceive again
+            _ccipReceive(sameChainMessage);
+            return;
         }
+        // Cross chain message
+        bytes memory payload = abi.encode(ccipBlue);
+        uint64 destinationChainSelector = _getChainSelector(
+            ccipBlue.offerChain
+        );
 
-        // Multi chain swap, mocking with simple contract call
-        // @TODO
+        Client.EVM2AnyMessage memory xcMessage = Client.EVM2AnyMessage({
+            receiver: abi.encode(
+                chainData[_getCCIPReceiver(ccipBlue)].contractAddress
+            ),
+            data: payload,
+            tokenAmounts: new Client.EVMTokenAmount[](0),
+            feeToken: address(linkToken),
+            extraArgs: Client._argsToBytes(
+                Client.EVMExtraArgsV1({gasLimit: 900000})
+            )
+        });
+
+        uint256 fee = router.getFee(destinationChainSelector, xcMessage);
+        fee = 0.1e18;
+        if (linkToken.balanceOf(address(this)) < fee)
+            revert InsufficientLinkBalance();
+        linkToken.approve(address(router), fee);
+
+        router.ccipSend(destinationChainSelector, xcMessage);
     }
 
-    function receiveCCIP(CCIPBlue memory ccipBlue) public {
+    function _getCCIPReceiver(
+        CCIPBlue memory ccipBlue
+    ) internal pure returns (uint256) {
         if (ccipBlue.messageType == MessageType.CFILL) {
-            _handleCFILL(chainId, ccipBlue);
+            return ccipBlue.offerChain;
         } else if (ccipBlue.messageType == MessageType.CXFILL) {
-            _handleCXFILL(chainId, ccipBlue);
+            return ccipBlue.fillChain;
         } else if (ccipBlue.messageType == MessageType.CINVALID) {
-            _handleCINVALID(chainId, ccipBlue);
+            return ccipBlue.fillChain;
         } else if (ccipBlue.messageType == MessageType.CDEADLINE) {
-            _handleCDEADLINE(chainId, ccipBlue);
+            return ccipBlue.offerChain;
         }
+        return 0;
+    }
+
+    function _ccipReceive(
+        Client.Any2EVMMessage memory any2EvmMessage
+    ) internal override {
+        CCIPBlue memory ccipBlue = abi.decode(any2EvmMessage.data, (CCIPBlue));
+
+        if (ccipBlue.messageType == MessageType.CFILL) {
+            _handleCFILL(
+                _getReverseChainSelector(any2EvmMessage.sourceChainSelector),
+                ccipBlue
+            );
+        } else if (ccipBlue.messageType == MessageType.CXFILL) {
+            _handleCXFILL(
+                _getReverseChainSelector(any2EvmMessage.sourceChainSelector),
+                ccipBlue
+            );
+        } else if (ccipBlue.messageType == MessageType.CINVALID) {
+            _handleCINVALID(
+                _getReverseChainSelector(any2EvmMessage.sourceChainSelector),
+                ccipBlue
+            );
+        } else if (ccipBlue.messageType == MessageType.CDEADLINE) {
+            _handleCDEADLINE(
+                _getReverseChainSelector(any2EvmMessage.sourceChainSelector),
+                ccipBlue
+            );
+        }
+    }
+
+    /// @dev values from https://docs.chain.link/ccip/supported-networks/v1_2_0/testnet#overview
+    function _getChainSelector(
+        uint256 _chainId
+    ) internal pure returns (uint64) {
+        if (_chainId == 5) return 16015286601757825753; // Ethereum Sepolia
+        if (_chainId == 84532) return 10344971235874465080; // Base Sepolia
+        if (_chainId == 44787) return 3552045678561919002; // Celo Alfajores
+        if (_chainId == 80002) return 16281711391670634445; // Polygon Amoy
+        if (_chainId == 43113) return 14767482510784806043; // Avalanche Fuji
+        if (_chainId == 421614) return 3478487238524512106; // Arbitrum Sepolia
+
+        revert UnsupportedChainId();
+    }
+
+    function _getReverseChainSelector(
+        uint64 _selector
+    ) internal pure returns (uint256) {
+        if (_selector == 16015286601757825753) return 5; // Ethereum Sepolia
+        if (_selector == 10344971235874465080) return 84532; // Base Sepolia
+        if (_selector == 3552045678561919002) return 44787; // Celo Alfajores
+        if (_selector == 16281711391670634445) return 80002; // Polygon Amoy
+        if (_selector == 14767482510784806043) return 43113; // Avalanche Fuji
+        if (_selector == 3478487238524512106) return 421614; // Arbitrum Sepolia
+
+        revert UnsupportedChainId();
     }
 }
