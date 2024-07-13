@@ -30,34 +30,46 @@ const blockChainData = [
         id: 421614,
         name: "Arbitrum Sepolia",
         block_explorer_url: "https://sepolia-explorer.arbitrum.io",
-        rpc_url: "https://sepolia-explorer.arbitrum.io/api",
+        rpc_url:
+            "https://tiniest-serene-waterfall.arbitrum-sepolia.quiknode.pro/0d6e219b77ded0fdbfbd9f64e8a54f92c8989aa2/",
         chain_image_url: "https://cryptologos.cc/logos/arbitrum-arb-logo.png",
     },
 ];
 
 const USDC_LOGO = "https://cryptologos.cc/logos/usd-coin-usdc-logo.png";
+const WETH_LOGO =
+    "https://assets.coingecko.com/coins/images/32882/large/WETH_%281%29.png";
+const WBTC_LOGO = "https://cryptologos.cc/logos/wrapped-bitcoin-wbtc-logo.png";
+const BNB_LOGO = "https://cryptologos.cc/logos/bnb-bnb-logo.png";
 
 const tokenMetadata = [
     {
-        symbol: "USDC",
-        address: "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
-        decimals: "6",
-        logo_url: USDC_LOGO,
-        network_id: 421614,
+        symbol: "WETH",
+        address: "0x4134b91C1A8e7cb778b89938e1910E5C2e4CDF66",
+        decimals: "18",
+        logo_url: WETH_LOGO,
+        network_id: 84532,
+    },
+    {
+        symbol: "WBTC",
+        address: "0x1Ab43ddF4DD48696C48A34c5359324A24e14cC13",
+        decimals: "18",
+        logo_url: WBTC_LOGO,
+        network_id: 84532,
     },
     {
         symbol: "USDC",
-        address: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        address: "0x2474396A9f5c2d068794727EE0A5D2e0eC46A613",
         decimals: "6",
         logo_url: USDC_LOGO,
         network_id: 84532,
     },
     {
-        symbol: "USDC",
-        address: "0x2F25deB3848C207fc8E0c34035B3Ba7fC157602B",
-        decimals: "6",
-        logo_url: USDC_LOGO,
-        network_id: 44787,
+        symbol: "BNB",
+        address: "0x046381E3750f367540d046075C4dB392D3F48569",
+        decimals: "8",
+        logo_url: BNB_LOGO,
+        network_id: 84532,
     },
 ];
 
@@ -66,9 +78,10 @@ export async function up(knex: Knex) {
         table.increments("id").primary();
         table.string("name", 100).notNullable();
         table.string("block_explorer_url", 100).notNullable();
-        table.string("rpc_url", 100).notNullable();
+        table.string("rpc_url", 150).notNullable();
         table.string("chain_image_url", 300).notNullable();
         table.integer("last_read_events_block").notNullable().defaultTo(0);
+        createdAtUpdatedAtRows(table, knex);
     });
 
     await knex.batchInsert(blockchainNetworkTable, blockChainData);

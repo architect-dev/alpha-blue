@@ -8,6 +8,9 @@ provider:
 custom:
     bundle:
         linting: false
+        externals:
+            - knex
+            - mysql
 
 functions:
     refresh-orders:
@@ -20,13 +23,21 @@ functions:
                   method: "POST"
 
     get-orders:
-        handler: src/handlers/get-orders.getOrders
+        handler: src/handlers/get-orders.getHttpOrders
         timeout: 25
         memorySize: 1028
         events:
             - httpApi:
                   path: "/api/v1/order"
                   method: "GET"
+
+    chain-reader:
+        handler: src/handlers/schedule/read-chain.chainReader
+        timeout: 300
+        events:
+            - schedule:
+                  name: chain-reader
+                  rate: rate(1 minute)
 
 plugins:
     - serverless-bundle

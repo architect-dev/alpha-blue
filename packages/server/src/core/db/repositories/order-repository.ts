@@ -72,9 +72,9 @@ export async function getOrders(options: {
     const orders: Order[] = [];
 
     for (const dbOrder of dbOrders) {
-        const blockchainNetwork = await getBlockchainNetwork(
-            dbOrder.network_id
-        );
+        const blockchainNetwork = await getBlockchainNetwork({
+            networkId: dbOrder.network_id,
+        });
         const tokenMetadata = await getTokenMetadata({
             pkId: dbOrder.token_pk_id,
         });

@@ -32,11 +32,12 @@ export class ContractWrapper {
         );
     }
     public getAddressAbi(networkId: number) {
-        const normalizedNetworkId = networkId == 31337 ? 31337 : 31337;
+        const normalizedNetworkId =
+            networkId == 31337 ? 31337 : networkId == 84532 ? 84532 : 31337;
 
-        const abi = deployedContracts[normalizedNetworkId].alphaBlueArb.abi;
+        const abi = deployedContracts[normalizedNetworkId].alphaBlue.abi;
         const address =
-            deployedContracts[normalizedNetworkId].alphaBlueArb.address;
+            deployedContracts[normalizedNetworkId].alphaBlue.address;
 
         return { abi, address };
     }
@@ -75,9 +76,9 @@ export async function getOfferFromContract(
     const potentialFills: NewPotentialFill[] = [];
 
     for (const fillOption of contractOffer.fillOptions) {
-        const destinationBlockchainNetwork = await getBlockchainNetwork(
-            fillOption.chainId
-        );
+        const destinationBlockchainNetwork = await getBlockchainNetwork({
+            networkId: fillOption.chainId,
+        });
         const fillTokenMetaData = await getTokenMetadata({
             networkId: destinationBlockchainNetwork.id,
             tokenAddress: fillOption.tokenAddress,

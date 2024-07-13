@@ -1,4 +1,5 @@
-import { EventLog } from "ethers";
+import { ethers, EventLog } from "ethers";
+import { updateBlockchainLastReadEventBlock } from "src/core/db/repositories/blockchain-repository";
 import {
     BaseEventModel,
     EventModel,
@@ -66,18 +67,23 @@ export async function getBlockchainTransactionById(
 }
 
 export async function getLastBlockHex(blockchain: BlockchainNetwork) {
-    console.log("Getting last block", blockchain);
+    console.log("Getting last block hex", blockchain);
+    if (blockchain.id == 421614) {
+        const provider = new ethers.JsonRpcProvider(blockchain.rpcUrl);
+        const blockNumber = await provider.getBlockNumber();
+        return `0x${blockNumber}`;
+    } else {
+        const callUrl = `${blockchain.rpcUrl}?module=block&action=eth_block_number`;
 
-    const callUrl = `${blockchain.rpcUrl}?module=block&action=getblockinfo`;
+        const fetchBlock = await fetch(callUrl);
 
-    const fetchBlock = await fetch(callUrl);
+        const json: CurrentBlockResponse =
+            (await fetchBlock.json()) as CurrentBlockResponse;
 
-    const json: CurrentBlockResponse =
-        (await fetchBlock.json()) as CurrentBlockResponse;
+        const hexBlockNumber: string = json.result;
 
-    const hexBlockNumber: string = json.result;
-
-    return hexBlockNumber;
+        return hexBlockNumber;
+    }
 }
 
 export async function getTopicAddress(blockchain: BlockchainNetwork) {
@@ -93,7 +99,6 @@ export async function getTopicAddress(blockchain: BlockchainNetwork) {
             throw new Error(`Contract is missing ${eventName} event in ABI`);
         }
         const topics = await filterFn().getTopicFilter();
-        console.log("🚀 ~ topics:", topics);
 
         if (topics && topics[0]) {
             let topicAddress: string;
@@ -117,13 +122,46 @@ export async function getEventLogs(
     endBlock: number,
     topicAddresses: string[]
 ) {
-    console.log("Getting last block", blockchain);
+    if (blockchain.id == 421614) {
+        const provider = new ethers.JsonRpcProvider(blockchain.rpcUrl);
+        const topicSize = 4;
 
+        const promisedEvents: EventLog[] = [];
+
+        for (let i = 0; i < topicAddresses.length; i += topicSize) {
+            const topicSet = topicAddresses.slice(i, i + topicSize);
+
+            const filter = {
+                address: contractAddress,
+                topics: topicSet,
+            };
+            const response: EventLog[] = (await provider.getLogs(
+                filter
+            )) as EventLog[];
+
+            promisedEvents.push(...response);
+        }
+
+        return promisedEvents;
+    }
     const topicList = topicAddresses
         .map((topic, index) => `topic${index}=${topic}`)
         .join("&");
 
-    const callUrl = `${blockchain.rpcUrl}?module=logs&action=getlogs&fromBlock=${blockchain.lastReadEventsBlock}&toBlock=${endBlock}&address=${contractAddress}&${topicList}`;
+    let firstBlock: number;
+
+    if (blockchain.lastReadEventsBlock < 1) {
+        firstBlock = endBlock - 500;
+    } else if (endBlock - blockchain.lastReadEventsBlock > 500) {
+        firstBlock = endBlock - 500;
+    } else {
+        firstBlock = blockchain.lastReadEventsBlock + 1;
+    }
+
+    const topicOrParams =
+        "&topic0_1_opr=or&topic0_2_opr=or&topic0_topic0_3_opr1_opr=or&topic1_2_opr=or&topic1_3_opr=or&topic2_3_opr=or&topic0_3_opr=or";
+
+    const callUrl = `${blockchain.rpcUrl}?module=logs&action=getlogs&fromBlock=${firstBlock}&toBlock=${endBlock}&address=${contractAddress}&${topicList}&${topicOrParams}`;
 
     const fetchLogs = await fetch(callUrl);
 
@@ -158,10 +196,7 @@ export async function processEventModel(eventModel: BaseEventModel) {
     }
 }
 
-export async function readChainEvents(
-    blockchain: BlockchainNetwork,
-    contractAddress: string
-) {
+export async function readChainEvents(blockchain: BlockchainNetwork) {
     console.log("Reading chain events", blockchain);
 
     const lastBlockHex = await getLastBlockHex(blockchain);
@@ -171,13 +206,14 @@ export async function readChainEvents(
         blockchain
     );
 
+    const contract = new ContractWrapper(blockchain.id, blockchain.rpcUrl);
+
     const eventLogs = await getEventLogs(
         blockchain,
-        contractAddress,
+        contract.getAddressAbi(blockchain.id).address,
         lastBlock,
         eventTopics
     );
-    const contract = new ContractWrapper(blockchain.id, blockchain.rpcUrl);
 
     const eventModels: BaseEventModel[] = [];
 
@@ -213,6 +249,8 @@ export async function readChainEvents(
             await processEventModel(eventModel);
         }
     }
+
+    await updateBlockchainLastReadEventBlock(blockchain.id, lastBlock);
 
     return {
         eventModels,
