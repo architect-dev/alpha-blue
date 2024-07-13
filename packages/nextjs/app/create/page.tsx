@@ -2,7 +2,19 @@
 
 import { useState, useEffect } from "react";
 import { useAccount, useBalance } from "wagmi";
+import { parseUnits, zeroAddress, ContractFunctionExecutionError } from "viem";
 import Moralis from 'moralis';
+import { useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
+import { getParsedError } from "~~/utils/scaffold-eth";
+
+export enum FillStatus {
+  "Pending" = 1,
+  "Invalid" = 2,
+  "Succeeded" = 3,
+  "Expired" = 4,
+  "FillFailed" = 5,
+  "XFillFailed" = 6,
+}
 
 interface TradeOption {
   chain: string;
@@ -23,7 +35,7 @@ const tokenMetadata = [
   {
     symbol: "USDC",
     address: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-    decimals: "6",
+    decimals: 6,
     name: "Base Sepolia",
     logo_url: "USDC_LOGO",
     network_id: 84532,
@@ -31,7 +43,7 @@ const tokenMetadata = [
   {
     symbol: "USDC",
     address: "0x2F25deB3848C207fc8E0c34035B3Ba7fC157602B",
-    decimals: "6",
+    decimals: 6,
     name: "Celo Alfajores",
     logo_url: "USDC_LOGO",
     network_id: 44787,
@@ -40,7 +52,7 @@ const tokenMetadata = [
     symbol: "USDC",
     name: "Arbitrum Sepolia",
     address: "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
-    decimals: "6",
+    decimals: 6,
     logo_url: "USDC_LOGO",
     network_id: 421614,
   },
@@ -48,23 +60,26 @@ const tokenMetadata = [
 
 // Initialize Moralis
 Moralis.start({
-  apiKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6IjYyMDU5ZTQzLWZmOTgtNGI5OC1hZTMyLWQyOGJiYjY1ZjdkYSIsIm9yZ0lkIjoiMTQwMDQ3IiwidXNlcklkIjoiMTM5NjkyIiwidHlwZUlkIjoiOGJkZDVkZDAtMjIyMS00Nzg0LWEyZDMtYzU1NGJjZDM4ZGU2IiwidHlwZSI6IlBST0pFQ1QiLCJpYXQiOjE3MjA4NjY4MjcsImV4cCI6NDg3NjYyNjgyN30.MgxL1ea2gQEAJ-nsaJt3CeQpTa-UJXrEqL-91qH88Xk" // Use environment variable
+  apiKey: process.env.NEXT_PUBLIC_MORALIS_API_KEY,
 });
 
-const useUserNFTs = (address: string | undefined, chain: string | undefined) => {
+const useUserNFTs = (address: string | undefined, chain: number | undefined) => {
   const [nfts, setNfts] = useState<NFT[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setNfts([]);
+
+    if (!address || !chain) {
+      setIsLoading(false);
+      return;
+    }
+
     const fetchNFTs = async () => {
-      if (!address || !chain) {
-        setIsLoading(false);
-        return;
-      }
+      setIsLoading(true);
 
       try {
-        console.log({ chain })
         const response = await Moralis.EvmApi.nft.getWalletNFTs({
           chain,
           format: "decimal",
@@ -73,15 +88,14 @@ const useUserNFTs = (address: string | undefined, chain: string | undefined) => 
         });
 
         const fetchedNFTs: NFT[] = response.result.map((nft: any) => ({
-          tokenId: nft.tokenId.toString(),
+          tokenId: nft.token_id?.toString(),
           name: nft.name || "",
           symbol: nft.symbol || "",
-          tokenAddress: nft.tokenAddress.toLowerCase(),
-          tokenUri: nft.tokenUri || "",
+          tokenAddress: nft.token_address?.toLowerCase(),
+          tokenUri: nft.token_uri || "",
           metadata: nft.metadata
         }));
 
-        console.log({ fetchedNFTs })
         setNfts(fetchedNFTs);
         setIsLoading(false);
       } catch (err) {
@@ -104,17 +118,22 @@ const CreateTrade = () => {
   const [selectedNft, setSelectedNft] = useState<NFT | null>(null);
   const [selectedChain, setSelectedChain] = useState<string>("");
   const [selectedToken, setSelectedToken] = useState<string>("USDC");
+  const [selectedTokenAmount, setSelectedTokenAmount] = useState<string>("");
   const [selectedNftChain, setSelectedNftChain] = useState<string>("");
+  const [isCreateOfferLoading, setIsCreateOfferLoading] = useState(false);
   const { address } = useAccount();
-  const { nfts, isLoading: nftsLoading, error: nftsError } = useUserNFTs(address, tokenMetadata.find(token => token.name === selectedNftChain)?.network_id.toString());
 
   const selectedTokenMetadata = tokenMetadata.find(token => token.name === selectedChain);
+  const selectedNftChainMetadata = tokenMetadata.find(token => token.name === selectedNftChain);
+  const { nfts, isLoading: nftsLoading, error: nftsError } = useUserNFTs(address, selectedNftChainMetadata?.network_id);
 
   const { data: balance, isError, isLoading } = useBalance({
     address: address,
     token: selectedTokenMetadata?.address,
     chainId: selectedTokenMetadata?.network_id,
   });
+
+  const { writeContractAsync: createOfferWrite } = useScaffoldWriteContract("alphaBlue");
 
   const handleAddOption = () => {
     setTradeOptions([...tradeOptions, { chain: "", token: "", amount: "" }]);
@@ -139,19 +158,49 @@ const CreateTrade = () => {
     setSelectedNftChain(chain);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const tradeForm = {
-      offerType,
-      tradeType,
-      offer: offerType === "Token"
-        ? { chain: selectedChain, token: selectedToken, amount: "" }
-        : { nft: selectedNft },
-      requesting: tradeOptions,
+
+    const currentTimestamp = BigInt(Math.floor(Date.now() / 1000));
+    const oneWeekFromNow = currentTimestamp + BigInt(7 * 24 * 60 * 60); // 1 week expiration
+
+    let offerData = {
+      owner: address!,
+      tokenAddress: offerType === "Token" ? selectedTokenMetadata?.address || zeroAddress : zeroAddress,
+      tokenAmount: offerType === "Token" ? parseUnits(selectedTokenAmount, selectedTokenMetadata?.decimals || 18) : BigInt(0),
+      nftAddress: offerType === "NFT" ? selectedNft?.tokenAddress || zeroAddress : zeroAddress,
+      nftId: offerType === "NFT" ? BigInt(selectedNft?.tokenId || "0") : BigInt(0),
+      allowPartialFills: tradeType === "partial",
+      created: currentTimestamp,
+      expiration: oneWeekFromNow,
+      fillOptions: tradeOptions.map(option => ({
+        chainId: BigInt(tokenMetadata.find(token => token.name === option.chain)?.network_id || 0),
+        tokenAddress: tokenMetadata.find(token => token.name === option.chain)?.address || zeroAddress,
+        tokenAmount: parseUnits(option.amount, 6), // Assuming USDC with 6 decimals
+        destAddress: address!, // Assuming the address to be the current user's address
+      })),
+      status: FillStatus.Pending, // Initial status set to Pending
+      offerFills: [],
+      depositTokenAddress: zeroAddress,
+      depositAmount: BigInt(0),
+      filledBP: BigInt(0),
+      pendingBP: BigInt(0),
     };
-    console.log("Trade Form:", tradeForm);
-    // Here you would typically send this data to your backend or smart contract
+
+    try {
+      console.log({ offerData })
+      await createOfferWrite({
+        functionName: "createOffer",
+        args: [offerData]
+      });
+      console.log("Offer created successfully");
+      // Reset form or navigate to a success page
+    } catch (error) {
+      console.error('Error creating offer:', getParsedError(error));
+    }
   };
+
+
 
   return (
     <div className="container mx-auto p-4 min-h-screen mt-10 flex flex-col items-center">
@@ -186,44 +235,61 @@ const CreateTrade = () => {
           {offerType === "Token" && (
             <>
               <div className="mb-4">
+                <div className="text-sm text-neutral-600 mb-1">Blockchain:</div>
                 <select
                   className="w-full p-2 border rounded-md"
                   value={selectedChain}
                   onChange={(e) => handleChainSelect(e.target.value)}
                 >
                   <option value="">Select chain</option>
-                  <option value="Base Sepolia">Base Sepolia</option>
-                  <option value="Celo Alfajores">Celo Alfajores</option>
-                  <option value="Arbitrum Sepolia">Arbitrum Sepolia</option>
+                  {tokenMetadata.map(token => (
+                    <option key={token.name} value={token.name}>{token.name}</option>
+                  ))}
                 </select>
               </div>
               {selectedChain && (
-                <div className="mb-4">
-                  <select
-                    className="w-full p-2 border rounded-md"
-                    value={selectedToken}
-                    onChange={(e) => setSelectedToken(e.target.value)}
-                  >
-                    <option value="USDC">USDC</option>
-                  </select>
-                </div>
-              )}
-              <div className="bg-white p-4 rounded-md mb-4">
-                <label className="block text-sm font-bold mb-1">Your Balance</label>
-                {isLoading && <div>Loading balance...</div>}
-                {isError && <div>Error fetching balance</div>}
-                {balance && (
-                  <div>
-                    <div className="text-xl font-bold">{balance.formatted} {balance.symbol}</div>
-                    <div className="text-sm text-gray-500">on {selectedChain}</div>
+                <>
+                  <div className="mb-4">
+                    <div className="text-sm text-neutral-600 mb-1">Select token:</div>
+                    <select
+                      className="w-full p-2 border rounded-md"
+                      value={selectedToken}
+                      onChange={(e) => setSelectedToken(e.target.value)}
+                    >
+                      <option value="USDC">USDC</option>
+                    </select>
                   </div>
-                )}
-              </div>
+
+                  {balance && selectedChain && (
+                    <div className="bg-white p-3 py-2 rounded-md mb-4">
+                      <label className="block text-sm font-bold">Your Balance</label>
+                      {isLoading && <div>Loading balance...</div>}
+                      {isError && <div>Error fetching balance</div>}
+                      {!isLoading && !isError && (
+                        <div className="flex justify-between items-center">
+                          <div className="text-xl font-bold">{balance.formatted} {balance.symbol}</div>
+                          <div className="text-sm text-gray-500">on {selectedChain}</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <div className="mb-4">
+                    <div className="text-sm text-neutral-600 mb-1">Amount of {balance?.symbol || 'token'} to add to trade:</div>
+                    <input
+                      type="text"
+                      className="w-full p-2 border rounded-md"
+                      value={selectedTokenAmount}
+                      onChange={(e) => setSelectedTokenAmount(e.target.value)}
+                    />
+                  </div>
+                </>
+              )}
             </>
           )}
           {offerType === "NFT" && (
             <>
               <div className="mb-4">
+                <div className="text-sm text-neutral-600 mb-1">Blockchain:</div>
                 <select
                   className="w-full p-2 border rounded-md"
                   value={selectedNftChain}
@@ -231,8 +297,7 @@ const CreateTrade = () => {
                 >
                   <option value="">Select chain</option>
                   <option value="Base Sepolia">Base Sepolia</option>
-                  <option value="Celo Alfajores">Celo Alfajores</option>
-                  <option value="Arbitrum Sepolia">Arbitrum Sepolia</option>
+                  {/* Add other chains as needed */}
                 </select>
               </div>
               {selectedNftChain && (
@@ -240,11 +305,15 @@ const CreateTrade = () => {
                   <label className="block text-sm font-bold mb-1">Select NFT</label>
                   {nftsLoading && <div>Loading your NFTs...</div>}
                   {nftsError && <div>Error loading NFTs: {nftsError}</div>}
+                  {!nftsLoading && !nftsError && nfts.length === 0 && (
+                    <div>You don't have any NFTs on {selectedNftChain}</div>
+                  )}
                   <div className="grid grid-cols-2 gap-2">
                     {nfts.map((nft) => (
                       <div
                         key={`${nft.tokenAddress}-${nft.tokenId}`}
-                        className={`border p-2 rounded-md ${selectedNft?.tokenId === nft.tokenId ? "border-blue-500" : "border-gray-300"}`}
+                        className={`border p-2 rounded-md cursor-pointer ${selectedNft?.tokenId === nft.tokenId ? "border-blue-500" : "border-gray-300"
+                          }`}
                         onClick={() => handleNftSelect(nft)}
                       >
                         <img src={nft.metadata?.image || '/placeholder-image.png'} alt={nft.name} className="w-full h-auto" />
@@ -294,9 +363,9 @@ const CreateTrade = () => {
                 onChange={e => handleOptionChange(index, "chain", e.target.value)}
               >
                 <option value="">Select Chain</option>
-                <option value="Base Sepolia">Base Sepolia</option>
-                <option value="Celo Alfajores">Celo Alfajores</option>
-                <option value="Arbitrum Sepolia">Arbitrum Sepolia</option>
+                {tokenMetadata.map(token => (
+                  <option key={token.name} value={token.name}>{token.name}</option>
+                ))}
               </select>
               <select
                 className="w-full p-2 border rounded-md mb-2"
@@ -324,8 +393,12 @@ const CreateTrade = () => {
             + Add Another Option
           </button>
         </div>
-        <button type="submit" className="w-full bg-black text-white py-2 rounded-md">
-          Submit
+        <button
+          type="submit"
+          className="w-full bg-black text-white py-2 rounded-md"
+          disabled={isCreateOfferLoading}
+        >
+          {isCreateOfferLoading ? "Creating offer..." : "Submit"}
         </button>
       </form>
     </div>
