@@ -1,6 +1,16 @@
-import { Order } from "src/core/models/domain-models";
+import { Order, TokenMetadata } from "src/core/models/domain-models";
 import { GetOrderHttpResponse } from "src/core/models/response-models";
 import { stripContractIdPrefix } from "src/core/utils/format-tools";
+
+function formatTokenDetails(tokenMetadata: TokenMetadata) {
+    return {
+        logoUrl: tokenMetadata.logoUrl,
+        symbol: tokenMetadata.symbol,
+        address: tokenMetadata.address,
+        decimals: tokenMetadata.decimals,
+        blockChainId: tokenMetadata.blockchainNetwork.id,
+    };
+}
 
 export function toGetOrdersHttpResponse(order: Order): GetOrderHttpResponse {
     const strippedId = stripContractIdPrefix(order.orderId);
@@ -12,31 +22,40 @@ export function toGetOrdersHttpResponse(order: Order): GetOrderHttpResponse {
             amount: tokenAmount,
             token: tokenMetadata.address,
             chain: tokenMetadata.blockchainNetwork.name,
-            tokenDetails: {
-                logoUrl: tokenMetadata.logoUrl,
-                symbol: tokenMetadata.symbol,
-                address: tokenMetadata.address,
-                decimals: tokenMetadata.decimals,
-                blockChainId: tokenMetadata.blockchainNetwork.id,
-            },
+            tokenDetails: formatTokenDetails(tokenMetadata),
         };
     });
 
     const offer = {
         amount: order.tokenAmount,
         chain: order.blockchainNetwork.name,
-        tokenDetails: {
-            logoUrl: order.tokenMetadata.logoUrl,
-            symbol: order.tokenMetadata.symbol,
-            address: order.tokenMetadata.address,
-            decimals: order.tokenMetadata.decimals,
-            blockChainId: order.tokenMetadata.blockchainNetwork.id,
-        },
+        tokenDetails: formatTokenDetails(order.tokenMetadata),
+        pendingBasisPoints: order.pendingBasisPoints,
+        filledBasisPoints: order.filledBasisPoints,
+        orderStatus: order.orderStatus,
     };
+
+    const fills = order.orderFills;
+    const swapHistory = [];
+
+    for (const fill of fills) {
+        const { tokenMetadata, tokenAmount } = fill;
+
+        swapHistory.push({
+            fillId: fill.fillId,
+            fillWalletAddress: fill.fillWalletAddress,
+            amount: tokenAmount,
+            chain: tokenMetadata.blockchainNetwork.name,
+            tokenDetails: formatTokenDetails(tokenMetadata),
+            fillStatus: fill.fillStatus,
+            expirationDate: fill.expirationDate,
+        });
+    }
 
     return {
         id: strippedId,
         receive: potentialFillsResponse,
+        fillHistory: swapHistory,
         creator: order.orderWalletAddress,
         offer,
         status: order.orderStatus,
