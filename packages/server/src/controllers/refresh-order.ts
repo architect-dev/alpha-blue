@@ -1,10 +1,7 @@
 import { getBlockchainNetwork } from "src/core/db/repositories/blockchain-repository";
 import { getOrders } from "src/core/db/repositories/order-repository";
 import { toGetOrdersHttpResponse } from "src/core/mappers/get-orders-http-response-mapper";
-import {
-    readChainEvents,
-    readChainEvents,
-} from "src/core/services/blockchain-service";
+import { readChainEvents } from "src/core/services/blockchain-service";
 
 export async function refreshOrder(req: any) {
     console.log("Refreshing order with ", req.body);

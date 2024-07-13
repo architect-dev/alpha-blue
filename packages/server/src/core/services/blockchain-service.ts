@@ -3,12 +3,17 @@ import { updateBlockchainLastReadEventBlock } from "src/core/db/repositories/blo
 import {
     BaseEventModel,
     EventModel,
+    FillFailedEvent,
     OrderCreatedEvent,
     OrderFilledEvent,
 } from "src/core/models/chain-event-models";
 import { BlockchainNetwork } from "src/core/models/domain-models";
 import { ContractWrapper } from "src/core/services/contract-service";
-import { createOrder, fillOrder } from "src/core/services/order-service";
+import {
+    createOrder,
+    fillOrder,
+    updateFillStatus,
+} from "src/core/services/order-service";
 
 const OfferCreated_EVENT_NAME = "OfferCreated";
 const OfferFilled_EVENT_NAME = "OfferFilled";
@@ -188,6 +193,13 @@ export async function processEventModel(eventModel: BaseEventModel) {
         case "OfferFilled": {
             const event: OrderFilledEvent = eventModel as OrderFilledEvent;
             await fillOrder(event);
+
+            break;
+        }
+
+        case "FillFailed": {
+            const event: FillFailedEvent = eventModel as FillFailedEvent;
+            await updateFillStatus(event);
 
             break;
         }
