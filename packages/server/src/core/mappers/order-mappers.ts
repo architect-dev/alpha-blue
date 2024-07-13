@@ -32,6 +32,8 @@ export function orderDbModelToOrder(
         tokenMetadata: tokenMetadata,
         tokenAmount: orderDbModel.token_amount,
         expirationDate: orderDbModel.expiration_date,
+        pendingBasisPoints: orderDbModel.pending_basis_points,
+        filledBasisPoints: orderDbModel.filled_basis_points,
         updatedAt: dateStringToEpochSeconds(orderDbModel.updated_at),
         createdAt: dateStringToEpochSeconds(orderDbModel.created_at),
     };
@@ -39,7 +41,14 @@ export function orderDbModelToOrder(
 
 export function newOrderToOrderDbModel(
     orderDbModel: NewOrder
-): Omit<OrderDbModel, "pk_id" | "updated_at" | "created_at"> {
+): Omit<
+    OrderDbModel,
+    | "pk_id"
+    | "updated_at"
+    | "created_at"
+    | "filled_basis_points"
+    | "pending_basis_points"
+> {
     return {
         order_id: orderDbModel.orderId,
         order_wallet_address: orderDbModel.orderWalletAddress,

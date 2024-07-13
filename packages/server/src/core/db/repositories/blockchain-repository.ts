@@ -57,7 +57,7 @@ export async function updateBlockchainLastReadEventBlock(
 
     await databaseConnection
         .select<BlockchainNetworkDbModel>()
-        .from("blockchain_network")
+        .from(blockchainNetworkTable)
         .where("id", networkId)
         .update({
             last_read_events_block: block,
