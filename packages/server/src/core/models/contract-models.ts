@@ -1,9 +1,9 @@
 export type ContractOffer = {
     owner: string;
-    tokenAddress: string;
-    tokenAmount: bigint;
-    nftAddress: string;
-    nftId: string;
+    tokenAddress?: string;
+    tokenAmount?: bigint;
+    nftAddress?: string;
+    nftId?: string;
     allowPartialFills: boolean;
     expiration: number;
     fillOptions: {
