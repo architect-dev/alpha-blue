@@ -6,6 +6,9 @@ import "../contracts/AlphaBlue.sol";
 import "../contracts/BasicERC20.sol";
 import "../contracts/BasicERC721.sol";
 
+import {IRouterClient, LinkToken} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
+import {CCIPLocalSimulator} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
+
 abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
     using QuikMaff for uint256;
     using SafeERC20 for IERC20;
@@ -17,6 +20,8 @@ abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
     BasicERC721 public mockNFT1;
 
     uint256 public nftWethDeposit = 0.01e18;
+
+    CCIPLocalSimulator public ccipLocalSimulator;
 
     // DATA
 
@@ -73,16 +78,33 @@ abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
         USDC = new BasicERC20WithDecimals("USDC", "USDC", 6);
         BNB = new BasicERC20("BNB", "BNB");
 
-        alphaBlueArb = new AlphaBlue(arbChainId, address(WETH), nftWethDeposit);
+        ccipLocalSimulator = new CCIPLocalSimulator();
+
+        (
+            ,// uint64 chainSelector_
+            IRouterClient router,
+            ,// IRouterClient destinationRouter_
+            ,// WETH9 wrappedNative_
+            LinkToken linkToken,
+            ,// BurnMintERC677Helper ccipBnM_
+            // BurnMintERC677Helper ccipLnM_
+        ) = ccipLocalSimulator.configuration();
+
+
+        alphaBlueArb = new AlphaBlue(arbChainId, address(WETH), nftWethDeposit, address(router), address(linkToken));
         alphaBlueBase = new AlphaBlue(
             baseChainId,
             address(WETH),
-            nftWethDeposit
+            nftWethDeposit,
+            address(router),
+            address(linkToken)
         );
         alphaBlueCelo = new AlphaBlue(
             celoChainId,
             address(WETH),
-            nftWethDeposit
+            nftWethDeposit,
+            address(router),
+            address(linkToken)
         );
 
         _setUpAlphaBlueChains();
@@ -92,6 +114,13 @@ abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
         _giveTokens(user4);
 
         setLabels();
+
+
+        uint256 linkAmount = 5 ether;
+        ccipLocalSimulator.requestLinkFromFaucet(address(alphaBlueArb), linkAmount);
+        ccipLocalSimulator.requestLinkFromFaucet(address(alphaBlueBase), linkAmount);
+        ccipLocalSimulator.requestLinkFromFaucet(address(alphaBlueCelo), linkAmount);
+
     }
 
     function _setUpAlphaBlueChains() internal {
@@ -253,7 +282,7 @@ abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
         uint256 id,
         address add,
         int256 value
-    ) public view {
+    ) public {
         _expectETHBalChange(id, add, value, "");
     }
     function _expectETHBalChange(
@@ -261,7 +290,7 @@ abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
         address add,
         int256 value,
         string memory label
-    ) public view {
+    ) public {
         assertEq(
             add.balance,
             uint256(int256(ethBalances[id][add]) + value),
@@ -282,7 +311,7 @@ abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
         address from,
         address to,
         uint256 value
-    ) public view {
+    ) public  {
         assertEq(
             from.balance,
             ethBalances[id][from] - value,

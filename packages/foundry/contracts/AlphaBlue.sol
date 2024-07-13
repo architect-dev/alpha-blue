@@ -232,7 +232,7 @@ library QuikMaff {
 
 // MAIN CONTRACT
 
-contract AlphaBlue is Ownable, AlphaBlueEvents {
+contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
     using QuikMaff for uint256;
     using SafeERC20 for IERC20;
 
