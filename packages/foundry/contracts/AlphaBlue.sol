@@ -24,19 +24,6 @@ struct FillOption {
     address destAddress;
 }
 
-struct OfferParams {
-    // token offer
-    address tokenAddress;
-    uint256 tokenAmount;
-    // nft offer
-    address nftAddress;
-    uint256 nftId;
-    // settings
-    bool allowPartialFills;
-    uint256 expiration;
-    FillOption[] fillOptions;
-}
-
 struct OfferData {
     address owner;
     // token offer
@@ -571,57 +558,64 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
             }
         }
 
-    // If offer is NFT
-    if (offer.nftAddress != address(0)) {
-        IERC721 nft = IERC721(offer.nftAddress);
-        
-        // Check NFT approval
-        if (nft.getApproved(offer.nftId) != address(this) && 
-            !nft.isApprovedForAll(offer.owner, address(this))) {
-            revert NftTransferNotApproved();
-        }
+        // If offer is NFT
+        if (offer.nftAddress != address(0)) {
+            IERC721 nft = IERC721(offer.nftAddress);
 
-        if (offerFill.partialBP != 10000) {
-            revert InvalidPartialFill();
-        }
+            // Check NFT approval
+            if (
+                nft.getApproved(offer.nftId) != address(this) &&
+                !nft.isApprovedForAll(offer.owner, address(this))
+            ) {
+                revert NftTransferNotApproved();
+            }
 
-        try nft.transferFrom(offer.owner, offerFill.adaDestAddress, offer.nftId) {
-            offerFill.pending = false;
-            offer.filledBP = 10000; // 100% filled
-            offer.status = OfferStatus.FILLED;
+            if (offerFill.partialBP != 10000) {
+                revert InvalidPartialFill();
+            }
 
-            // Return the WETH stake deposit
-            IERC20(offer.depositTokenAddress).safeTransfer(
-                offer.owner,
-                offer.depositAmount
-            );
+            try
+                nft.transferFrom(
+                    offer.owner,
+                    offerFill.adaDestAddress,
+                    offer.nftId
+                )
+            {
+                offerFill.pending = false;
+                offer.filledBP = 10000; // 100% filled
+                offer.status = OfferStatus.FILLED;
 
-            _sendCCIP(
-                CCIPBlue({
-                    messageType: MessageType.CXFILL,
-                    bobDestAddress: offerFill.bobDestAddress == address(0)
-                        ? offer.owner
-                        : offerFill.bobDestAddress,
-                    adaDestAddress: address(0),
-                    offerId: offerId,
-                    offerChain: chainId,
-                    fillId: offerFill.fillId,
-                    fillChain: offerFill.fillChain,
-                    offerTokenAddress: address(0),
-                    offerTokenAmount: 0,
-                    offerNftAddress: offer.nftAddress,
-                    offerNftId: offer.nftId,
-                    fillTokenAddress: address(0),
-                    fillTokenAmount: 0,
-                    partialBP: 10000, // Always 100% for NFTs
-                    deadline: 0,
-                    errorType: ErrorType.NONE
-                })
-            );
-        } catch {
-            revert NftTransferFailed();
-        }
+                // Return the WETH stake deposit
+                IERC20(offer.depositTokenAddress).safeTransfer(
+                    offer.owner,
+                    offer.depositAmount
+                );
 
+                _sendCCIP(
+                    CCIPBlue({
+                        messageType: MessageType.CXFILL,
+                        bobDestAddress: offerFill.bobDestAddress == address(0)
+                            ? offer.owner
+                            : offerFill.bobDestAddress,
+                        adaDestAddress: address(0),
+                        offerId: offerId,
+                        offerChain: chainId,
+                        fillId: offerFill.fillId,
+                        fillChain: offerFill.fillChain,
+                        offerTokenAddress: address(0),
+                        offerTokenAmount: 0,
+                        offerNftAddress: offer.nftAddress,
+                        offerNftId: offer.nftId,
+                        fillTokenAddress: address(0),
+                        fillTokenAmount: 0,
+                        partialBP: 10000, // Always 100% for NFTs
+                        deadline: 0,
+                        errorType: ErrorType.NONE
+                    })
+                );
+            } catch {
+                revert NftTransferFailed();
+            }
         }
 
         emit OfferFilled(chainId, offer.owner, offerId);

@@ -1,3 +1,5 @@
+import fs from 'fs'
+
 import { Abi, Address, Chain, createClient, createPublicClient, createWalletClient, http, publicActions } from 'viem'
 import {
 	celo,
@@ -24,7 +26,6 @@ import {
 	baseGoerli,
 	baseSepolia,
 } from 'viem/chains'
-import deployedContracts from './deployedContracts'
 import { privateKeyToAccount } from 'viem/accounts'
 import { GenericContractsDeclaration } from './contract'
 import { PRIVATE_KEY } from './secrets'
@@ -95,6 +96,9 @@ const tokenNames: Record<string, true> = {
 const sync = async () => {
 	const chainData: ChainData[] = []
 
+	const JSON_DIR = './script/'
+	const deployedContracts = JSON.parse(fs.readFileSync(`${JSON_DIR}deployedContracts.json`).toString())
+
 	Object.entries(deployedContracts as GenericContractsDeclaration).map(([chainId, chainContracts]) => {
 		if (!chainsToSync[chainId]) return
 
@@ -151,20 +155,20 @@ const sync = async () => {
 				chainData[tokenSetIndex].tokens.map((token) => token.address),
 				chainData[tokenSetIndex].tokens.map((token) => token.valid),
 			])
-			// const { request } = await publicClient.simulateContract({
-			// 	account,
-			// 	address: chainData[chainIndex].alphaBlueContractAddress,
-			// 	abi: chainData[chainIndex].alphaBlueContractAbi,
-			// 	functionName: 'setChainAndToken',
-			// 	args: [
-			// 		chainData[tokenSetIndex].id,
-			// 		chainData[tokenSetIndex].valid,
-			// 		chainData[tokenSetIndex].alphaBlueContractAddress,
-			// 		chainData[tokenSetIndex].tokens.map((token) => token.address),
-			// 		chainData[tokenSetIndex].tokens.map((token) => token.valid),
-			// 	],
-			// })
-			// await walletClient.writeContract(request)
+			const { request } = await publicClient.simulateContract({
+				account,
+				address: chainData[chainIndex].alphaBlueContractAddress,
+				abi: chainData[chainIndex].alphaBlueContractAbi,
+				functionName: 'setChainAndTokens',
+				args: [
+					chainData[tokenSetIndex].id,
+					chainData[tokenSetIndex].valid,
+					chainData[tokenSetIndex].alphaBlueContractAddress,
+					chainData[tokenSetIndex].tokens.map((token) => token.address),
+					chainData[tokenSetIndex].tokens.map((token) => token.valid),
+				],
+			})
+			await walletClient.writeContract(request)
 		}
 	}
 }
