@@ -400,4 +400,88 @@ contract AlphaBlueTest is AlphaBlueBase {
         assertEq(offer.status == OfferStatus.FILLED, true, "Offer filled");
         assertEq(fill.status == FillStatus.SUCCEEDED, true, "Fill succeeded");
     }
+
+    function test_fillOffer_HaltAndDeadline() public {
+        vm.prank(user1);
+        WETH.approve(address(alphaBlueArb), type(uint256).max);
+        vm.prank(user2);
+        USDC.approve(address(alphaBlueArb), type(uint256).max);
+
+        OfferData memory offerParams = _createBaseOfferParams();
+
+        vm.prank(user1);
+        uint256 offerId = alphaBlueArb.createOffer(offerParams);
+
+        FillParams memory fillParams = _createBaseFillParams(
+            arbChainId,
+            offerId,
+            address(USDC),
+            3000e6,
+            offerParams
+        );
+
+        vm.prank(user1);
+        WETH.approve(address(alphaBlueArb), 0);
+
+        // Ada pays for fill
+        _expectTokenTransfer(USDC, user2, address(alphaBlueArb), 3000e6);
+
+        vm.prank(user2);
+        alphaBlueArb.createFill(fillParams);
+
+        OfferData memory offer = alphaBlueArb.getOffer(offerId);
+        assertEq(offer.pendingBP, 10000, "BP Marked as pending");
+        assertEq(offer.offerFills.length, 1, "Fill added to array");
+
+        FillData memory fill = alphaBlueArb.getFill(0);
+        assertEq(fill.status == FillStatus.PENDING, true, "Fill is pending");
+
+        // REVERSIONS
+
+        vm.expectRevert(InvalidFillId.selector);
+        vm.prank(user2);
+        alphaBlueArb.triggerDeadline(100);
+
+        vm.expectRevert(NotFiller.selector);
+        vm.prank(user3);
+        alphaBlueArb.triggerDeadline(0);
+
+        vm.expectRevert(NotPassedDeadline.selector);
+        vm.prank(user2);
+        alphaBlueArb.triggerDeadline(0);
+
+        // DEADLINE
+
+        vm.warp(block.timestamp + 25 hours);
+
+        // Ada receives refund
+        _expectTokenTransfer(USDC, address(alphaBlueArb), user2, 3000e6);
+
+        // Ada receives deposit on destChain
+        _expectTokenTransfer(WETH, address(alphaBlueArb), user2, 0.01e18);
+
+        // Emit Offer Deadlined event
+        vm.expectEmit(true, true, true, true);
+        emit OfferDeadlined(arbChainId, user1, offerId);
+
+        // Emit Fill Deadlined event
+        vm.expectEmit(true, true, true, true);
+        emit FillDeadlined(arbChainId, user2, 0);
+
+        vm.prank(user2);
+        alphaBlueArb.triggerDeadline(0);
+
+        offer = alphaBlueArb.getOffer(offerId);
+        fill = alphaBlueArb.getFill(0);
+        assertEq(
+            offer.status == OfferStatus.DEADLINED,
+            true,
+            "Offer deadlined out"
+        );
+        assertEq(
+            fill.status == FillStatus.DEADLINED,
+            true,
+            "Fill deadlined out"
+        );
+    }
 }
