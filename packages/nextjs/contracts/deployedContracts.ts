@@ -15169,7 +15169,7 @@ const deployedContracts = {
   },
   84532: {
     alphaBlue: {
-      address: "0xB99B6e86a4261Ea53a89fA290645bCafF5C6A7Cd",
+      address: "0x05E7E10c4e5f59D3DFf8CF409d9431Ae8aB1459B",
       abi: [
         {
           type: "constructor",
@@ -16553,7 +16553,7 @@ const deployedContracts = {
       inheritedFunctions: {},
     },
     WETH: {
-      address: "0x1A80eEce8157E808F8fab7144440183c7C64d0BA",
+      address: "0x263eCCc4f197a915478D65e7459eB122b70467E2",
       abi: [
         {
           type: "constructor",
@@ -17284,7 +17284,7 @@ const deployedContracts = {
       inheritedFunctions: {},
     },
     WBTC: {
-      address: "0x550f82094fEb1845EcF75a846138e66d2C68502A",
+      address: "0xCe01402dAfC52c500FDAc6d2c258DC42068B7218",
       abi: [
         {
           type: "constructor",
@@ -18015,7 +18015,7 @@ const deployedContracts = {
       inheritedFunctions: {},
     },
     USDC: {
-      address: "0x4F587647727edc2659E5E9B31A6e718E2A30D5d7",
+      address: "0x150366De049BD34898b897e1DE30e11E9DA18e40",
       abi: [
         {
           type: "constructor",
@@ -18746,7 +18746,7 @@ const deployedContracts = {
       inheritedFunctions: {},
     },
     BNB: {
-      address: "0xc7fAFCc64f5441b2134313F89e86bA8Db3ab482e",
+      address: "0x17Dd91c02eAA972D529Eb3C2489348AdD018d27B",
       abi: [
         {
           type: "constructor",
@@ -19477,7 +19477,7 @@ const deployedContracts = {
       inheritedFunctions: {},
     },
     MOCC: {
-      address: "0xf582F19460F5B7De8343f7bC3b5B536eAd6C8D66",
+      address: "0xBf387D82Dbd9b9ec975420Ff694775CB3FAB517D",
       abi: [
         {
           type: "constructor",
