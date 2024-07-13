@@ -53,14 +53,14 @@ contract DeployScript is ScaffoldETHDeploy {
         _markDeployment("MOCC", address(MOCC));
 
         // BASE
-        // alphaBlue = new AlphaBlue(
-        //     baseChainId,
-        //     address(WETH),
-        //     nftWethDeposit,
-        //     0xD3b06cEbF099CE7DA4AcCf578aaebFDBd6e88a93,
-        //     0xE4aB69C077896252FAFBD49EFD26B5D171A32410
-        // );
-        // _markDeployment("alphaBlue", address(alphaBlue));
+        alphaBlue = new AlphaBlue(
+            baseChainId,
+            address(WETH),
+            nftWethDeposit,
+            0xD3b06cEbF099CE7DA4AcCf578aaebFDBd6e88a93,
+            0xE4aB69C077896252FAFBD49EFD26B5D171A32410
+        );
+        _markDeployment("alphaBlue", address(alphaBlue));
 
         // ARB
         // alphaBlue = new AlphaBlue(

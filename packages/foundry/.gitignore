@@ -19,3 +19,4 @@ subgraph/tests
 generated/
 build/
 generated/schema.ts
+secrets.ts
