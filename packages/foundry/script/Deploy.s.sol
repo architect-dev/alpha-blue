@@ -35,28 +35,28 @@ contract DeployScript is ScaffoldETHDeploy {
         vm.startBroadcast(deployerPrivateKey);
 
         WETH = new BasicERC20("WETH", "WETH", 18);
-        console.log("WETH DEPLOYMENT", address(WETH));
+        _markDeployment("WETH", address(WETH));
         WBTC = new BasicERC20("WBTC", "WBTC", 8);
-        console.log("WBTC DEPLOYMENT", address(WBTC));
+        _markDeployment("WBTC", address(WBTC));
         USDC = new BasicERC20("USDC", "USDC", 6);
-        console.log("USDC DEPLOYMENT", address(USDC));
+        _markDeployment("USDC", address(USDC));
         BNB = new BasicERC20("BNB", "BNB", 18);
-        console.log("BNB DEPLOYMENT", address(BNB));
+        _markDeployment("BNB", address(BNB));
 
         alphaBlueArb = new AlphaBlue(arbChainId, address(WETH), nftWethDeposit);
-        console.log("alphaBlueArb DEPLOYMENT", address(alphaBlueArb));
+        _markDeployment("alphaBlueArb", address(alphaBlueArb));
         alphaBlueBase = new AlphaBlue(
             baseChainId,
             address(WETH),
             nftWethDeposit
         );
-        console.log("alphaBlueBase DEPLOYMENT", address(alphaBlueBase));
+        _markDeployment("alphaBlueBase", address(alphaBlueBase));
         alphaBlueCelo = new AlphaBlue(
             celoChainId,
             address(WETH),
             nftWethDeposit
         );
-        console.log("alphaBlueCelo DEPLOYMENT", address(alphaBlueCelo));
+        _markDeployment("alphaBlueCelo", address(alphaBlueCelo));
 
         _setUpAlphaBlueChains();
 
@@ -70,6 +70,11 @@ contract DeployScript is ScaffoldETHDeploy {
          * This function should be called last.
          */
         exportDeployments();
+    }
+
+    function _markDeployment(string memory name, address addr) internal {
+        deployments.push(Deployment({name: name, addr: addr}));
+        console.log("DEPLOYMENT:", name, addr);
     }
 
     // function test() public { }
