@@ -5,6 +5,7 @@ pragma solidity ^0.8.20;
 import "forge-std/console.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "./AlphaBlueEvents.sol";
 
 // STRUCTS / EVENTS / ERRORS
 
@@ -179,45 +180,6 @@ error NotPassedDeadline();
 error AlreadyDeadlined();
 error CannotCancelWithPending();
 error OfferStatusNotOpen();
-
-interface AlphaBlueEvents {
-    // EVENTS
-    event OfferCreated(
-        uint256 indexed chainId,
-        address indexed creator,
-        uint256 indexed offerId
-    );
-    event OfferCancelled(
-        uint256 indexed chainId,
-        address indexed creator,
-        uint256 indexed offerId
-    );
-    event OfferDeadlined(
-        uint256 indexed chainId,
-        address indexed creator,
-        uint256 indexed offerId
-    );
-    event OfferFilled(
-        uint256 indexed chainId,
-        address indexed creator,
-        uint256 indexed offerId
-    );
-    event FillFailed(
-        uint256 indexed chainId,
-        address indexed filler,
-        uint256 indexed fillId
-    );
-    event FillXFilled(
-        uint256 indexed chainId,
-        address indexed filler,
-        uint256 indexed fillId
-    );
-    event FillDeadlined(
-        uint256 indexed chainId,
-        address indexed filler,
-        uint256 indexed fillId
-    );
-}
 
 // LIBRARIES
 
