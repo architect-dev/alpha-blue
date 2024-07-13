@@ -2,26 +2,28 @@
     "name": "asset-swa-server",
     "scripts": {
         "deploy:dev": "sls deploy --stage develop --verbose --aws-profile develop-backend",
-        "step-db:dev": "knex migrate:up --env develop"
+        "step-db:dev": "knex migrate:up --env develop",
+        "rollback-db:dev": "knex migrate:rollback --env develop",
+        "dev": "sls offline start --stage offline --verbose"
     },
     "devDependencies": {
         "serverless": "^3.31.0",
-        "serverless-bundle": "^6.0.0",
+        "serverless-bundle": "6.0.0",
         "typescript": "5.2.2"
     },
     "dependencies": {
         "@types/aws-lambda": "^8.10.131",
-        "@typescript-eslint/eslint-plugin": "^6.9.1",
-        "@typescript-eslint/parser": "^6.9.1",
+        "@typescript-eslint/eslint-plugin": "6.9.1",
+        "@typescript-eslint/parser": "6.9.1",
         "aws-sdk": "^2.1536.0",
         "dotenv": "^16.4.5",
-        "eslint": "^8.54.0",
-        "eslint-plugin-react": "^7.33.1",
-        "eslint-plugin-react-hooks": "^4.6.0",
+        "eslint": "8.54.0",
+        "eslint-plugin-react": "7.33.1",
+        "eslint-plugin-react-hooks": "4.6.0",
         "ethers": "^6.9.1",
         "knex": "^3.1.0",
         "knex-serverless-mysql": "^1.1.0",
         "serverless-mysql": "^1.5.5",
-        "serverless-offline": "^10.0.0"
+        "serverless-offline": "^13.6.0"
     }
 }

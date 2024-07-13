@@ -36,3 +36,15 @@ export function createForeignKey(
 
     return t;
 }
+
+export async function createTableIfNotFound(
+    knex: Knex,
+    tableName: string,
+    t: (t: Knex.CreateTableBuilder) => void,
+    debug = false
+) {
+    await knex.schema.hasTable(tableName).then(async (exists) => {
+        if (!exists)
+            return await knex.schema.debug(debug).createTable(tableName, t);
+    });
+}

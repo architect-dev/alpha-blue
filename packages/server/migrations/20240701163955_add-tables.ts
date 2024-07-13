@@ -1,5 +1,9 @@
 import { Knex } from "knex";
-import { createdAtUpdatedAtRows, createForeignKey } from "knex/utils";
+import {
+    createdAtUpdatedAtRows,
+    createForeignKey,
+    createTableIfNotFound,
+} from "../knex/utils";
 
 const blockchainNetworkTable = "blockchain_network";
 const tokenMetadataTable = "token_metadata";
@@ -29,20 +33,17 @@ const blockChainData = [
 ];
 
 export async function up(knex: Knex) {
-    await knex.schema.createTableIfNotExists(
-        blockchainNetworkTable,
-        (table) => {
-            table.increments("id").primary();
-            table.string("name", 100).notNullable();
-            table.string("block_explorer_url", 100).notNullable();
-            table.string("rpc_url", 100).notNullable();
-            table.integer("last_read_events_block").notNullable().defaultTo(0);
-        }
-    );
+    await createTableIfNotFound(knex, blockchainNetworkTable, (table) => {
+        table.increments("id").primary();
+        table.string("name", 100).notNullable();
+        table.string("block_explorer_url", 100).notNullable();
+        table.string("rpc_url", 100).notNullable();
+        table.integer("last_read_events_block").notNullable().defaultTo(0);
+    });
 
     await knex.batchInsert(blockchainNetworkTable, blockChainData);
 
-    await knex.schema.createTableIfNotExists(tokenMetadataTable, (table) => {
+    await createTableIfNotFound(knex, tokenMetadataTable, (table) => {
         table.increments("pk_id").primary();
         table.string("symbol", 120).notNullable();
         table.string("address", 100).notNullable();
@@ -56,7 +57,7 @@ export async function up(knex: Knex) {
         createdAtUpdatedAtRows(table, knex);
     });
 
-    await knex.schema.createTableIfNotExists(orderTable, (table) => {
+    await createTableIfNotFound(knex, orderTable, (table) => {
         table.increments("pk_id").primary();
         table.string("order_id", 100).notNullable();
         table.string("order_wallet_address", 100).notNullable();
@@ -82,7 +83,7 @@ export async function up(knex: Knex) {
         createdAtUpdatedAtRows(table, knex);
     });
 
-    await knex.schema.createTableIfNotExists(potentialFillTable, (table) => {
+    await createTableIfNotFound(knex, potentialFillTable, (table) => {
         table.increments("pk_id").primary();
         table.string("destination_wallet_address", 100).notNullable();
 
@@ -104,7 +105,7 @@ export async function up(knex: Knex) {
         createdAtUpdatedAtRows(table, knex);
     });
 
-    await knex.schema.createTableIfNotExists(fillHistoryTable, (table) => {
+    await createTableIfNotFound(knex, fillHistoryTable, (table) => {
         table.increments("pk_id").primary();
         table.string("fill_id", 100).notNullable();
         table.string("fill_wallet_address", 100).notNullable();
@@ -129,9 +130,9 @@ export async function up(knex: Knex) {
 }
 
 export async function down(knex: Knex) {
-    await knex.schema.dropTable(blockchainNetworkTable);
-    await knex.schema.dropTable(tokenMetadataTable);
-    await knex.schema.dropTable(orderTable);
     await knex.schema.dropTable(potentialFillTable);
     await knex.schema.dropTable(fillHistoryTable);
+    await knex.schema.dropTable(orderTable);
+    await knex.schema.dropTable(tokenMetadataTable);
+    await knex.schema.dropTable(blockchainNetworkTable);
 }

@@ -5,6 +5,9 @@ service: asset-swap
 provider:
     name: aws
     runtime: nodejs20.x
+custom:
+    bundle:
+        linting: false
 
 functions:
     create-order:
@@ -18,3 +21,4 @@ functions:
 
 plugins:
     - serverless-bundle
+    - serverless-offline
