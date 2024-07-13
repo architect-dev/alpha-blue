@@ -330,7 +330,6 @@ contract AlphaBlueTest is AlphaBlueBase {
         //  == UNAVAILABLE__DEADLINED ==
         //  == UNAVAILABLE__CANCELLED ==
         //  == INVALID__OFFER_ID ==
-        //  == UNAVAILABLE__FILL_BP ==
     }
 
     function test_fillOffer_HaltAndContinue() public {
@@ -450,6 +449,36 @@ contract AlphaBlueTest is AlphaBlueBase {
         vm.prank(user2);
         alphaBlueArb.triggerDeadline(0);
 
+        //  == UNAVAILABLE__FILL_BP ==
+        {
+            // Ada pays for fill
+            _expectTokenTransfer(USDC, user2, address(alphaBlueArb), 3000e6);
+            // Ada is refunded on revert
+            _expectTokenTransfer(USDC, address(alphaBlueArb), user2, 3000e6);
+            // Emit FillFailed
+            vm.expectEmit(true, true, true, true);
+            emit FillFailed(arbChainId, user2, 1);
+
+            vm.prank(user2);
+            alphaBlueArb.createFill(fillParams);
+
+            // Ada refunded (see above)
+
+            // Ada error type set correctly
+            // Ada fill status marked INVALID
+            FillData memory secondFill = alphaBlueArb.getFill(1);
+            assertEq(
+                secondFill.errorType == ErrorType.UNAVAILABLE__FILL_BP,
+                true,
+                "2nd fill Error is UNAVAILABLE__FILL_BP"
+            );
+            assertEq(
+                secondFill.status == FillStatus.INVALID,
+                true,
+                "Ada secondFill marked INVALID"
+            );
+        }
+
         // DEADLINE
 
         vm.warp(block.timestamp + 25 hours);
@@ -483,5 +512,151 @@ contract AlphaBlueTest is AlphaBlueBase {
             true,
             "Fill deadlined out"
         );
+    }
+
+    function test_offer_partials() public {
+        vm.prank(user1);
+        WETH.approve(address(alphaBlueArb), type(uint256).max);
+
+        OfferData memory offerParams = _createBaseOfferParams();
+        offerParams.allowPartialFills = true;
+
+        vm.prank(user1);
+        uint256 offerId = alphaBlueArb.createOffer(offerParams);
+
+        vm.prank(user2);
+        USDC.approve(address(alphaBlueArb), type(uint256).max);
+
+        // HALF BP
+
+        // Ada pays for fill
+        _expectTokenTransfer(USDC, user2, address(alphaBlueArb), 1500e6);
+        // Bob pays for offer
+        _expectTokenTransfer(WETH, user1, address(alphaBlueArb), 0.5e18);
+        // Bob NOT refunded deposit, not filled yet (see below for fill)
+        // _expectTokenTransfer(WETH, address(alphaBlueArb), user1, 0.01e18);
+        // Ada receives offer on other side of bridge
+        _expectTokenTransfer(WETH, address(alphaBlueArb), user2, 0.5e18);
+        // Bob receives fill on other side of bridge
+        _expectTokenTransfer(USDC, address(alphaBlueArb), user1, 1500e6);
+
+        FillParams memory fillParams = _createBaseFillParams(
+            arbChainId,
+            offerId,
+            address(USDC),
+            1500e6,
+            offerParams
+        );
+        fillParams.partialBP = 5000;
+
+        vm.prank(user2);
+        alphaBlueArb.createFill(fillParams);
+
+        OfferData memory offer = alphaBlueArb.getOffer(offerId);
+        assertEq(offer.filledBP, 5000, "Offer filled to 5000BP");
+
+        // OTHER HALF BP
+
+        // Ada pays for fill
+        _expectTokenTransfer(USDC, user2, address(alphaBlueArb), 1500e6);
+        // Bob pays for offer
+        _expectTokenTransfer(WETH, user1, address(alphaBlueArb), 0.5e18);
+        // Bob refunded deposit, not filled yet (see below for fill)
+        _expectTokenTransfer(WETH, address(alphaBlueArb), user1, 0.01e18);
+        // Ada receives offer on other side of bridge
+        _expectTokenTransfer(WETH, address(alphaBlueArb), user2, 0.5e18);
+        // Bob receives fill on other side of bridge
+        _expectTokenTransfer(USDC, address(alphaBlueArb), user1, 1500e6);
+
+        vm.prank(user2);
+        alphaBlueArb.createFill(fillParams);
+
+        offer = alphaBlueArb.getOffer(offerId);
+        assertEq(offer.filledBP, 10000, "Offer filled to 10000BP");
+        assertEq(
+            offer.status == OfferStatus.FILLED,
+            true,
+            "Offer marked as filled"
+        );
+    }
+
+    function test_fillOffer_HaltAndPendingPartials() public {
+        vm.prank(user1);
+        WETH.approve(address(alphaBlueArb), type(uint256).max);
+        vm.prank(user2);
+        USDC.approve(address(alphaBlueArb), type(uint256).max);
+
+        OfferData memory offerParams = _createBaseOfferParams();
+        offerParams.allowPartialFills = true;
+
+        vm.prank(user1);
+        uint256 offerId = alphaBlueArb.createOffer(offerParams);
+
+        uint256 partialBP = 6000;
+        uint256 partialAmount = (3000e6 * partialBP) / 10000;
+        FillParams memory fillParams = _createBaseFillParams(
+            arbChainId,
+            offerId,
+            address(USDC),
+            partialAmount,
+            offerParams
+        );
+        fillParams.partialBP = partialBP;
+
+        vm.prank(user1);
+        WETH.approve(address(alphaBlueArb), 0);
+
+        // Ada pays for fill
+        _expectTokenTransfer(USDC, user2, address(alphaBlueArb), partialAmount);
+
+        vm.prank(user2);
+        alphaBlueArb.createFill(fillParams);
+
+        OfferData memory offer = alphaBlueArb.getOffer(offerId);
+        assertEq(offer.pendingBP, partialBP, "BP Marked as pending");
+        assertEq(offer.offerFills.length, 1, "Fill added to array");
+
+        FillData memory fill = alphaBlueArb.getFill(0);
+        assertEq(fill.status == FillStatus.PENDING, true, "Fill is pending");
+
+        //  == UNAVAILABLE__FILL_BP ==
+        {
+            // Ada pays for fill
+            _expectTokenTransfer(
+                USDC,
+                user2,
+                address(alphaBlueArb),
+                partialAmount
+            );
+            // Ada is refunded on revert
+            _expectTokenTransfer(
+                USDC,
+                address(alphaBlueArb),
+                user2,
+                partialAmount
+            );
+            // Emit FillFailed
+            vm.expectEmit(true, true, true, true);
+            emit FillFailed(arbChainId, user2, 1);
+
+            vm.prank(user2);
+            alphaBlueArb.createFill(fillParams);
+
+            // Ada refunded (see above)
+
+            // Ada error type set correctly
+            // Ada fill status marked INVALID
+            FillData memory secondFill = alphaBlueArb.getFill(1);
+            assertEq(
+                secondFill.errorType == ErrorType.UNAVAILABLE__FILL_BP,
+                true,
+                "2nd fill Error is UNAVAILABLE__FILL_BP"
+            );
+            assertEq(
+                secondFill.status == FillStatus.INVALID,
+                true,
+                "Ada secondFill marked INVALID"
+            );
+        }
     }
 }

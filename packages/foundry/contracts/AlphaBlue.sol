@@ -574,7 +574,7 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
                 offer.pendingBP -= offerFill.partialBP;
                 offer.filledBP += offerFill.partialBP;
 
-                // Iff all BP is filled, mark offer as filled, return deposit to bob
+                // If all BP is filled, mark offer as filled, return deposit to bob
                 if (offer.filledBP == 10000) {
                     offer.status = OfferStatus.FILLED;
                     IERC20(offer.depositTokenAddress).safeTransfer(
