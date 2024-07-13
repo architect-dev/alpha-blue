@@ -6,13 +6,13 @@ import "../contracts/AlphaBlue.sol";
 import "../contracts/BasicERC20.sol";
 import "../contracts/BasicERC721.sol";
 
-abstract contract AlphaBlueBase is Test {
+abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
     using QuikMaff for uint256;
     using SafeERC20 for IERC20;
 
     BasicERC20 public WETH;
-    BasicERC20 public WBTC;
-    BasicERC20 public USDC;
+    BasicERC20WithDecimals public WBTC;
+    BasicERC20WithDecimals public USDC;
     BasicERC20 public BNB;
     BasicERC721 public mockNFT1;
 
@@ -69,8 +69,8 @@ abstract contract AlphaBlueBase is Test {
         users = [user1, user2, user3, user4];
 
         WETH = new BasicERC20("WETH", "WETH");
-        WBTC = new BasicERC20("WBTC", "WBTC");
-        USDC = new BasicERC20("USDC", "USDC");
+        WBTC = new BasicERC20WithDecimals("WBTC", "WBTC", 8);
+        USDC = new BasicERC20WithDecimals("USDC", "USDC", 6);
         BNB = new BasicERC20("BNB", "BNB");
 
         alphaBlueArb = new AlphaBlue(arbChainId, address(WETH), nftWethDeposit);
@@ -86,6 +86,10 @@ abstract contract AlphaBlueBase is Test {
         );
 
         _setUpAlphaBlueChains();
+        _giveTokens(user1);
+        _giveTokens(user2);
+        _giveTokens(user3);
+        _giveTokens(user4);
 
         setLabels();
     }
@@ -97,47 +101,89 @@ abstract contract AlphaBlueBase is Test {
         chainsId[2] = celoChainId;
 
         bool[] memory chainsValid = new bool[](3);
+        chainsValid[0] = true;
+        chainsValid[1] = true;
+        chainsValid[2] = true;
 
         address[] memory chainsContract = new address[](3);
         chainsContract[0] = address(alphaBlueArb);
         chainsContract[1] = address(alphaBlueBase);
         chainsContract[2] = address(alphaBlueCelo);
 
-        address[][] memory tokens = new address[][](3 * 4);
-        bool[][] memory tokensValid = new bool[][](3 * 4);
+        address[] memory tokens = new address[](4);
+        tokens[0] = address(WETH);
+        tokens[1] = address(WBTC);
+        tokens[2] = address(USDC);
+        tokens[3] = address(BNB);
 
-        for (uint256 i = 0; i < 3 * 4; i += 4) {
-            chainsValid[i] = true;
+        bool[] memory tokensValid = new bool[](4);
+        tokensValid[0] = true;
+        tokensValid[1] = true;
+        tokensValid[2] = true;
+        tokensValid[3] = true;
 
-            tokens[i][0] = address(WETH);
-            tokens[i][1] = address(WBTC);
-            tokens[i][2] = address(USDC);
-            tokens[i][3] = address(BNB);
-
-            tokensValid[i][0] = true;
-            tokensValid[i][1] = true;
-            tokensValid[i][2] = true;
-            tokensValid[i][3] = true;
-        }
-
-        alphaBlueArb.setChainsAndTokens(
-            chainsId,
-            chainsValid,
-            chainsContract,
+        alphaBlueArb.setChainAndTokens(
+            arbChainId,
+            true,
+            address(alphaBlueArb),
             tokens,
             tokensValid
         );
-        alphaBlueBase.setChainsAndTokens(
-            chainsId,
-            chainsValid,
-            chainsContract,
+        alphaBlueArb.setChainAndTokens(
+            baseChainId,
+            true,
+            address(alphaBlueBase),
             tokens,
             tokensValid
         );
-        alphaBlueCelo.setChainsAndTokens(
-            chainsId,
-            chainsValid,
-            chainsContract,
+        alphaBlueArb.setChainAndTokens(
+            celoChainId,
+            true,
+            address(alphaBlueCelo),
+            tokens,
+            tokensValid
+        );
+
+        alphaBlueBase.setChainAndTokens(
+            arbChainId,
+            true,
+            address(alphaBlueArb),
+            tokens,
+            tokensValid
+        );
+        alphaBlueBase.setChainAndTokens(
+            baseChainId,
+            true,
+            address(alphaBlueBase),
+            tokens,
+            tokensValid
+        );
+        alphaBlueBase.setChainAndTokens(
+            celoChainId,
+            true,
+            address(alphaBlueCelo),
+            tokens,
+            tokensValid
+        );
+
+        alphaBlueCelo.setChainAndTokens(
+            arbChainId,
+            true,
+            address(alphaBlueArb),
+            tokens,
+            tokensValid
+        );
+        alphaBlueCelo.setChainAndTokens(
+            baseChainId,
+            true,
+            address(alphaBlueBase),
+            tokens,
+            tokensValid
+        );
+        alphaBlueCelo.setChainAndTokens(
+            celoChainId,
+            true,
+            address(alphaBlueCelo),
             tokens,
             tokensValid
         );
@@ -255,5 +301,55 @@ abstract contract AlphaBlueBase is Test {
     ) public {
         vm.expectEmit(true, true, false, true, address(token));
         emit Transfer(from, to, value);
+    }
+
+    // REUSABLES
+
+    function _createBaseOfferParams()
+        internal
+        view
+        returns (OfferData memory params)
+    {
+        params.tokenAddress = address(WETH);
+        params.tokenAmount = 1e18;
+        params.allowPartialFills = false;
+        params.expiration = block.timestamp + 30 days;
+        params.fillOptions = new FillOption[](6);
+        params.fillOptions[0] = FillOption({
+            chainId: arbChainId,
+            tokenAddress: address(USDC),
+            tokenAmount: 3000e6,
+            destAddress: address(0)
+        });
+        params.fillOptions[1] = FillOption({
+            chainId: arbChainId,
+            tokenAddress: address(USDC),
+            tokenAmount: 3000e6,
+            destAddress: address(0)
+        });
+        params.fillOptions[2] = FillOption({
+            chainId: baseChainId,
+            tokenAddress: address(BNB),
+            tokenAmount: 10e18,
+            destAddress: address(0)
+        });
+        params.fillOptions[3] = FillOption({
+            chainId: baseChainId,
+            tokenAddress: address(USDC),
+            tokenAmount: 3000e6,
+            destAddress: address(0)
+        });
+        params.fillOptions[4] = FillOption({
+            chainId: celoChainId,
+            tokenAddress: address(WBTC),
+            tokenAmount: 0.1e8,
+            destAddress: address(0)
+        });
+        params.fillOptions[5] = FillOption({
+            chainId: celoChainId,
+            tokenAddress: address(USDC),
+            tokenAmount: 3000e6,
+            destAddress: address(0)
+        });
     }
 }

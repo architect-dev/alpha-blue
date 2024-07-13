@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
+import "../contracts/AlphaBlue.sol";
 import {AlphaBlueBase} from "./AlphaBlue.base.t.sol";
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -12,64 +13,132 @@ contract AlphaBlueTest is AlphaBlueBase {
         super.setUp();
     }
 
-    
+    function test_createOffer() public {
+        vm.prank(user1);
+        WETH.approve(address(alphaBlueArb), type(uint256).max);
 
-    // function test_setAlias_RevertWhen_InvalidAlias() public {
-    //     // Length < 3
-    //     vm.expectRevert(InvalidAlias.selector);
-    //     auctioneer.setAlias("AA");
+        _expectTokenTransfer(WETH, user1, address(alphaBlueArb), 0.01e18);
 
-    //     // Length > 9
-    //     vm.expectRevert(InvalidAlias.selector);
-    //     auctioneer.setAlias("AAAAAAAAAA");
-    // }
+        vm.expectEmit(true, true, true, true);
+        emit OfferCreated(arbChainId, user1, 0);
 
-    // function test_setAlias_ExpectEmit_UpdatedAlias() public {
-    //     vm.expectEmit(true, true, true, true);
-    //     emit UpdatedAlias(user1, "TEST");
+        OfferData memory params = _createBaseOfferParams();
 
-    //     _setUserAlias(user1, "TEST");
-    // }
+        vm.prank(user1);
+        uint256 offerId = alphaBlueArb.createOffer(params);
 
-    // function test_setAlias_RevertWhen_AliasTaken() public {
-    //     auctioneer.setAlias("XXXX");
+        OfferData memory offer = alphaBlueArb.getOffer(offerId);
 
-    //     vm.expectRevert(AliasTaken.selector);
-    //     _setUserAlias(user1, "XXXX");
-    // }
+        assertEq(offer.owner, user1, "User1 owns offer");
+        assertEq(offer.tokenAddress, address(WETH), "WETH");
+        assertEq(offer.tokenAmount, 1e18, "1e18 WETH");
+        assertEq(offer.nftAddress, address(0), "No NFT");
+        assertEq(offer.nftId, 0, "No NFT ID");
+        assertEq(offer.allowPartialFills, false, "No partials");
+        assertEq(
+            offer.expiration,
+            block.timestamp + 30 days,
+            "30 day default exp"
+        );
+        assertEq(offer.fillOptions.length, 6, "6 Fill options");
+        assertEq(
+            offer.depositTokenAddress,
+            address(WETH),
+            "WETH is token, so it is used as deposit"
+        );
+        assertEq(offer.depositAmount, 0.01e18, "1% of deposit amount");
 
-    // function test_setAlias_ClearPreviouslyUsedAlias() public {
-    //     _setUserAlias(user1, "XXXX");
+        assertEq(alphaBlueArb.offersCount(), 1, "1 offer created");
 
-    //     vm.expectRevert(AliasTaken.selector);
-    //     _setUserAlias(user2, "XXXX");
+        OfferStatus memory offerStatus = alphaBlueArb.getOfferStatus(offerId);
 
-    //     assertEq(
-    //         auctioneer.aliasUser("XXXX"),
-    //         user1,
-    //         "Alias should point to correct user"
-    //     );
-    //     assertEq(
-    //         auctioneer.userAlias(user1),
-    //         "XXXX",
-    //         "User should point to correct alias"
-    //     );
+        assertEq(
+            offerStatus.status == OfferStatusEnum.OPEN,
+            true,
+            "Offer starts as open"
+        );
+    }
 
-    //     _setUserAlias(user1, "YYYY");
+    function test_createOffer_Reverts() public {
+        vm.prank(user1);
+        WETH.approve(address(alphaBlueArb), type(uint256).max);
 
-    //     assertEq(
-    //         auctioneer.aliasUser("XXXX"),
-    //         address(0),
-    //         "Alias should point to address(0)"
-    //     );
-    //     assertEq(
-    //         auctioneer.userAlias(user1),
-    //         "YYYY",
-    //         "User should point to new alias"
-    //     );
+        OfferData memory params = _createBaseOfferParams();
 
-    //     vm.expectEmit(true, true, true, true);
-    //     emit UpdatedAlias(user2, "XXXX");
-    //     _setUserAlias(user2, "XXXX");
-    // }
+        // MISSING TOKEN AND NFT
+        params.tokenAddress = address(0);
+        vm.expectRevert(MissingOfferTokenOrNft.selector);
+        vm.prank(user1);
+        alphaBlueArb.createOffer(params);
+
+        // INVALID TOKEN
+        params.tokenAddress = address(100);
+        vm.expectRevert(InvalidChainToken.selector);
+        vm.prank(user1);
+        alphaBlueArb.createOffer(params);
+
+        // INVALID FILL CHAIN OPTION
+        params.tokenAddress = address(WETH);
+        params.fillOptions[0].chainId = 100;
+        vm.expectRevert(InvalidChain.selector);
+        vm.prank(user1);
+        alphaBlueArb.createOffer(params);
+
+        // MISSING FILL OPTIONS
+        params.fillOptions = new FillOption[](0);
+        vm.expectRevert(MissingFillOptions.selector);
+        vm.prank(user1);
+        alphaBlueArb.createOffer(params);
+    }
+
+    function test_cancelOffer() public {
+        vm.prank(user1);
+        WETH.approve(address(alphaBlueArb), type(uint256).max);
+
+        OfferData memory params = _createBaseOfferParams();
+
+        vm.prank(user1);
+        uint256 offerId = alphaBlueArb.createOffer(params);
+
+        _expectTokenTransfer(WETH, address(alphaBlueArb), user1, 0.01e18);
+
+        vm.expectEmit(true, true, true, true);
+        emit OfferCancelled(arbChainId, user1, offerId);
+
+        vm.prank(user1);
+        alphaBlueArb.cancelOffer(offerId);
+
+        OfferStatus memory offerStatus = alphaBlueArb.getOfferStatus(offerId);
+
+        assertEq(
+            offerStatus.status == OfferStatusEnum.CANCELLED,
+            true,
+            "Offer cancelled"
+        );
+    }
+
+    function test_cancelOffer_Reverts() public {
+        vm.prank(user1);
+        WETH.approve(address(alphaBlueArb), type(uint256).max);
+
+        OfferData memory params = _createBaseOfferParams();
+
+        vm.prank(user1);
+        uint256 offerId = alphaBlueArb.createOffer(params);
+
+        vm.expectRevert(InvalidOfferId.selector);
+        vm.prank(user1);
+        alphaBlueArb.cancelOffer(2);
+
+        vm.expectRevert(NotOfferer.selector);
+        vm.prank(user2);
+        alphaBlueArb.cancelOffer(offerId);
+
+        vm.prank(user1);
+        alphaBlueArb.cancelOffer(offerId);
+
+        vm.expectRevert(OfferStatusNotOpen.selector);
+        vm.prank(user1);
+        alphaBlueArb.cancelOffer(offerId);
+    }
 }

@@ -147,8 +147,8 @@ error OfferOwnerMismatch();
 error MissingOfferTokenOrNft();
 error MissingFillOptions();
 error InvalidFillId();
-error InvalidFillChain();
-error InvalidFillChainToken();
+error InvalidChain();
+error InvalidChainToken();
 error ZeroAmount();
 error InsufficientAllowanceOrBalance();
 error InvalidApproval();
@@ -167,41 +167,7 @@ error AlreadyDeadlined();
 error CannotCancelWithPending();
 error OfferStatusNotOpen();
 
-// LIBRARIES
-
-library QuikMaff {
-    function min(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a < b ? a : b;
-    }
-    function max(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a > b ? a : b;
-    }
-    function scaleByBP(
-        uint256 amount,
-        uint256 bp
-    ) internal pure returns (uint256) {
-        if (bp == 10000) return amount;
-        return (amount * bp) / 10000;
-    }
-}
-
-// MAIN CONTRACT
-
-contract AlphaBlue is Ownable {
-    using QuikMaff for uint256;
-    using SafeERC20 for IERC20;
-
-    // State Variables
-    uint256 public immutable chainId;
-    mapping(uint256 => ChainData) public chainData;
-    mapping(uint256 => mapping(address => bool)) public chainTokens;
-
-    OfferData[] public offers;
-    mapping(uint256 => OfferStatus) public offerStatuses;
-
-    address public weth;
-    uint256 public nftWethDeposit;
-
+interface AlphaBlueEvents {
     // EVENTS
     event OfferCreated(
         uint256 indexed chainId,
@@ -238,6 +204,43 @@ contract AlphaBlue is Ownable {
         address indexed filler,
         uint256 indexed fillId
     );
+}
+
+// LIBRARIES
+
+library QuikMaff {
+    function min(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a < b ? a : b;
+    }
+    function max(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a > b ? a : b;
+    }
+    function scaleByBP(
+        uint256 amount,
+        uint256 bp
+    ) internal pure returns (uint256) {
+        if (bp == 10000) return amount;
+        return (amount * bp) / 10000;
+    }
+}
+
+// MAIN CONTRACT
+
+contract AlphaBlue is Ownable, AlphaBlueEvents {
+    using QuikMaff for uint256;
+    using SafeERC20 for IERC20;
+
+    // State Variables
+    uint256 public immutable chainId;
+    mapping(uint256 => ChainData) public chainData;
+    mapping(uint256 => mapping(address => bool)) public chainTokens;
+
+    uint256 public offersCount = 0;
+    mapping(uint256 => OfferData) public offers;
+    mapping(uint256 => OfferStatus) public offerStatuses;
+
+    address public weth;
+    uint256 public nftWethDeposit;
 
     // ADMIN ACTIONS
 
@@ -272,6 +275,21 @@ contract AlphaBlue is Ownable {
             }
         }
     }
+    function setChainAndTokens(
+        uint256 _chainId,
+        bool chainsValid,
+        address chainsContract,
+        address[] calldata tokens,
+        bool[] calldata tokensValid
+    ) public onlyOwner {
+        chainData[_chainId].valid = chainsValid;
+        chainData[_chainId].chainId = _chainId;
+        chainData[_chainId].contractAddress = chainsContract;
+
+        for (uint256 i = 0; i < tokens.length; i++) {
+            chainTokens[_chainId][tokens[i]] = tokensValid[i];
+        }
+    }
 
     //
     //
@@ -289,48 +307,60 @@ contract AlphaBlue is Ownable {
     //
     //
 
+    // VIEW
+
+    function getOffer(
+        uint256 offerId
+    ) public view returns (OfferData memory offer) {
+        offer = offers[offerId];
+    }
+    function getOfferStatus(
+        uint256 offerId
+    ) public view returns (OfferStatus memory offerStatus) {
+        offerStatus = offerStatuses[offerId];
+    }
+
     // USER ACTIONS
 
-    function createOffer(OfferData calldata params) public {
-        // @TEST offer owner mismatch -- revert OfferOwnerMismatch;
-        if (msg.sender != params.owner) revert OfferOwnerMismatch();
-
+    function createOffer(OfferData calldata params) public returns (uint256) {
         // Validate offer
         // @TEST if both token and nft are empty -- revert MissingOfferTokenOrNft();
-        // @TEST if offer token doesn't exist on current chain - revert InvalidFillChainToken();
+        // @TEST if offer token doesn't exist on current chain - revert InvalidChainToken();
         if (
             params.tokenAddress == address(0) && params.nftAddress == address(0)
         ) revert MissingOfferTokenOrNft();
         if (params.tokenAddress != address(0)) {
             if (!chainTokens[chainId][params.tokenAddress])
-                revert InvalidFillChainToken();
+                revert InvalidChainToken();
         } else {
             if (params.nftAddress == address(0)) revert InvalidNFTOrder();
         }
 
         // Validate offer fills
         // @TEST empty fill options -- revert MissingFillOptions;
-        // @TEST fill option chain invalid -- revert InvalidFillChain;
-        // @TEST fill option chain valid, but token invalid -- revert InvalidFillChainToken;
+        // @TEST fill option chain invalid -- revert InvalidChain;
+        // @TEST fill option chain valid, but token invalid -- revert InvalidChainToken;
         // @TEST fill option chain & token valid, but value 0 -- revert ZeroAmount;
         if (params.fillOptions.length == 0) revert MissingFillOptions();
         for (uint256 i = 0; i < params.fillOptions.length; i++) {
             if (!chainData[params.fillOptions[i].chainId].valid)
-                revert InvalidFillChain();
+                revert InvalidChain();
             if (
                 !chainTokens[params.fillOptions[i].chainId][
                     params.fillOptions[i].tokenAddress
                 ]
-            ) revert InvalidFillChainToken();
+            ) revert InvalidChainToken();
             if (params.fillOptions[i].tokenAmount == 0) revert ZeroAmount();
         }
 
         // OFFER DATA
 
-        uint256 offerId = offers.length;
+        uint256 offerId = offersCount;
+        offersCount += 1;
         OfferData storage offer = offers[offerId];
 
         // @TEST ensure that all data is transferred correctly into the offer struct item
+        offer.owner = msg.sender;
         offer.tokenAddress = params.tokenAddress;
         offer.tokenAmount = params.tokenAmount;
         offer.nftAddress = params.nftAddress;
@@ -373,10 +403,12 @@ contract AlphaBlue is Ownable {
         );
 
         emit OfferCreated(chainId, offer.owner, offerId);
+
+        return offerId;
     }
 
     function cancelOffer(uint256 offerId) public {
-        if (offerId > offers.length) revert InvalidOfferId();
+        if (offerId > offersCount) revert InvalidOfferId();
 
         OfferData storage offer = offers[offerId];
         OfferStatus storage offerStatus = offerStatuses[offerId];
@@ -420,8 +452,7 @@ contract AlphaBlue is Ownable {
             return ErrorType.INVALID__OFFER_CHAIN_MISMATCH;
 
         // Validate Order exists and matches
-        if (ccipBlue.offerId > offers.length)
-            return ErrorType.INVALID__OFFER_ID;
+        if (ccipBlue.offerId > offersCount) return ErrorType.INVALID__OFFER_ID;
         OfferData storage offer = offers[ccipBlue.offerId];
         if (
             offer.tokenAddress != address(0) &&
@@ -507,7 +538,7 @@ contract AlphaBlue is Ownable {
         return ErrorType.NONE;
     }
     function nudgeOffer(uint256 offerId) public {
-        if (offerId >= offers.length) revert InvalidOfferId();
+        if (offerId >= offersCount) revert InvalidOfferId();
         if (offers[offerId].owner != msg.sender) revert NotOfferer();
 
         for (uint256 i = 0; i < offerStatuses[offerId].offerFills.length; i++) {
@@ -639,7 +670,7 @@ contract AlphaBlue is Ownable {
     function createFill(FillParams calldata params) public {
         // Validate fill token
         if (chainTokens[chainId][params.fillTokenAddress] != true)
-            revert InvalidFillChainToken();
+            revert InvalidChainToken();
 
         // Pull fill token
         if (
