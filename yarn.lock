@@ -6092,12 +6092,16 @@ __metadata:
     "@graphprotocol/graph-ts": ^0.35.1
     "@types/prettier": 2
     "@types/qrcode": 1
+    abitype: 1.0.2
     dotenv: ~16.3.1
     envfile: ~6.18.0
     ethers: ~5.7.1
     prettier: ~2.8.8
     qrcode: ~1.5.3
     toml: ~3.0.0
+    ts-node: ^10.9.2
+    typescript: ^5.5.3
+    viem: ^2.17.3
   languageName: unknown
   linkType: soft
 
@@ -25552,7 +25556,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ts-node@npm:^10.9.1":
+"ts-node@npm:^10.9.1, ts-node@npm:^10.9.2":
   version: 10.9.2
   resolution: "ts-node@npm:10.9.2"
   dependencies:
@@ -25843,7 +25847,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@npm:^5.1":
+"typescript@npm:^5.1, typescript@npm:^5.5.3":
   version: 5.5.3
   resolution: "typescript@npm:5.5.3"
   bin:
@@ -25883,7 +25887,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@patch:typescript@^5.1#~builtin<compat/typescript>":
+"typescript@patch:typescript@^5.1#~builtin<compat/typescript>, typescript@patch:typescript@^5.5.3#~builtin<compat/typescript>":
   version: 5.5.3
   resolution: "typescript@patch:typescript@npm%3A5.5.3#~builtin<compat/typescript>::version=5.5.3&hash=a1c5e5"
   bin:

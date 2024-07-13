@@ -16,6 +16,7 @@
 		"generate:abi:AlphaBlue": "forge inspect contracts/AlphaBlue.sol:AlphaBlue abi > ./abi/AlphaBlue.json",
 		"generate:abi:IERC20": "forge inspect lib/forge-std/src/interfaces/IERC20.sol:IERC20 abi > ../nextjs/contracts/IERC20.json",
 		"generate:events:AlphaBlue": "forge inspect contracts/AlphaBlue.sol:AlphaBlue events > ../nextjs/contracts/AlphaBlueEvents.json",
+		"syncChains": "npx tsx script/syncChains.ts",
 		"====GRAPH====": "",
 		"graph:codegen": "graph codegen -o subgraph/generated",
 		"graph:build": "graph build",
@@ -30,12 +31,16 @@
 	"dependencies": {
 		"@graphprotocol/graph-cli": "^0.72.2",
 		"@graphprotocol/graph-ts": "^0.35.1",
+		"abitype": "1.0.2",
 		"dotenv": "~16.3.1",
 		"envfile": "~6.18.0",
 		"ethers": "~5.7.1",
 		"prettier": "~2.8.8",
 		"qrcode": "~1.5.3",
-		"toml": "~3.0.0"
+		"toml": "~3.0.0",
+		"ts-node": "^10.9.2",
+		"typescript": "^5.5.3",
+		"viem": "^2.17.3"
 	},
 	"devDependencies": {
 		"@types/prettier": "2",

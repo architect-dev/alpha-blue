@@ -35,22 +35,22 @@ contract DeployScript is ScaffoldETHDeploy {
         }
         vm.startBroadcast(deployerPrivateKey);
 
-        WETH = new BasicERC20("WETH", "WETH", 18);
-        _markDeployment("WETH", address(WETH));
-        WBTC = new BasicERC20("WBTC", "WBTC", 8);
-        _markDeployment("WBTC", address(WBTC));
-        USDC = new BasicERC20("USDC", "USDC", 6);
-        _markDeployment("USDC", address(USDC));
-        BNB = new BasicERC20("BNB", "BNB", 18);
-        _markDeployment("BNB", address(BNB));
+        // WETH = new BasicERC20("WETH", "WETH", 18);
+        // _markDeployment("WETH", address(WETH));
+        // WBTC = new BasicERC20("WBTC", "WBTC", 8);
+        // _markDeployment("WBTC", address(WBTC));
+        // USDC = new BasicERC20("USDC", "USDC", 6);
+        // _markDeployment("USDC", address(USDC));
+        // BNB = new BasicERC20("BNB", "BNB", 18);
+        // _markDeployment("BNB", address(BNB));
 
-        MOCC = new BasicERC721(
-            "MOCC",
-            "MOCC",
-            "https://tokenBaseURI",
-            "https://contractURI"
-        );
-        _markDeployment("MOCC", address(MOCC));
+        // MOCC = new BasicERC721(
+        //     "MOCC",
+        //     "MOCC",
+        //     "https://tokenBaseURI",
+        //     "https://contractURI"
+        // );
+        // _markDeployment("MOCC", address(MOCC));
 
         // BASE
         // alphaBlue = new AlphaBlue(

@@ -75,15 +75,23 @@ function main() {
 		deployments[chain] = deploymentObject
 	})
 
-	const allGeneratedContracts = {}
+	const TARGET_DIR = '../nextjs/contracts/'
+	const JSON_DIR = './script/'
+	const test = fs.readFileSync(`${JSON_DIR}deployedContracts.json`)
+	console.log({
+		test: JSON.parse(test),
+	})
+
+	const allGeneratedContracts = JSON.parse(test)
 
 	chains.forEach((chain) => {
-		allGeneratedContracts[chain] = {}
+		if (allGeneratedContracts[chain] == null) allGeneratedContracts[chain] = {}
 		const broadCastObject = JSON.parse(fs.readFileSync(`${current_path_to_broadcast}/${chain}/run-latest.json`))
 		const transactionsCreate = broadCastObject.transactions.filter((transaction) => transaction.transactionType == 'CREATE')
 		transactionsCreate.forEach((transaction) => {
 			const artifact = getArtifactOfContract(transaction.contractName)
 			allGeneratedContracts[chain][deployments[chain][transaction.contractAddress] || transaction.contractName] = {
+				...allGeneratedContracts[chain][deployments[chain][transaction.contractAddress] || transaction.contractName],
 				address: transaction.contractAddress,
 				abi: artifact.abi,
 				inheritedFunctions: getInheritedFunctions(artifact),
@@ -91,7 +99,6 @@ function main() {
 		})
 	})
 
-	const TARGET_DIR = '../nextjs/contracts/'
 	const SERVER_DIR = '../server/src/core/contracts/'
 
 	const fileContent = Object.entries(allGeneratedContracts).reduce((content, [chainId, chainConfig]) => {
@@ -124,6 +131,16 @@ function main() {
 				parser: 'typescript',
 			}
 		)
+	)
+
+	if (!fs.existsSync(JSON_DIR)) {
+		fs.mkdirSync(JSON_DIR)
+	}
+	fs.writeFileSync(
+		`${JSON_DIR}deployedContracts.json`,
+		prettier.format(`{${fileContent}}`, {
+			parser: 'json',
+		})
 	)
 }
 
