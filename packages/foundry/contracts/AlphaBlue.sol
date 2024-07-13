@@ -7,8 +7,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./AlphaBlueEvents.sol";
 import {IRouterClient} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IRouterClient.sol"; // Allows us to send CCIP messages
-import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
-import {CCIPReceiver} from "@chainlink/contracts-ccip/src/v0.8/ccip/applications/CCIPReceiver.sol"; // Allows us to receive CCIP messages
+import {CCIPReceiver, Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/applications/CCIPReceiver.sol"; // Allows us to receive CCIP messages
 
 // STRUCTS / EVENTS / ERRORS
 
@@ -232,7 +231,7 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
         uint256 _nftWethDeposit,
         address _router,
         address _link
-    ) Ownable(msg.sender) {
+    ) Ownable(msg.sender) CCIPReceiver(_router) {
         chainId = _chainId;
         weth = _weth;
         nftWethDeposit = _nftWethDeposit;
