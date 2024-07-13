@@ -10,11 +10,17 @@ import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeE
 
 // TODO: Send CMESSAGE to claim stake of pending tx that has passed the deadline, this will cancel the remainder of the offer if there are no other pendingBP
 
+struct ChainData {
+    bool valid;
+    uint256 chainId;
+    address contractAddress;
+}
+
 struct FillOption {
     uint256 chainId;
     address tokenAddress;
     uint256 tokenAmount;
-    uint256 destAddress;
+    address destAddress;
 }
 
 struct OfferData {
@@ -168,8 +174,8 @@ contract AlphaBlueOfferer is Ownable {
 
     // State Variables
     uint256 public immutable chainId;
-    mapping(uint256 => bool) public availableChains;
-    mapping(uint256 => mapping(address => bool)) public availableChainTokens;
+    mapping(uint256 => ChainData) public chainData;
+    mapping(uint256 => mapping(address => bool)) public chainTokens;
     // TODO: Set available chains function
 
     OfferData[] public offers;
@@ -219,7 +225,7 @@ contract AlphaBlueOfferer is Ownable {
             params.tokenAddress == address(0) && params.nftAddress == address(0)
         ) revert MissingOfferTokenOrNft();
         if (params.tokenAddress != address(0)) {
-            if (availableChainTokens[chainId][params.tokenAddress] != true)
+            if (!chainTokens[chainId][params.tokenAddress])
                 revert InvalidFillChainToken();
         } else {
             if (params.nftAddress == address(0)) revert InvalidNFTOrder();
@@ -232,12 +238,12 @@ contract AlphaBlueOfferer is Ownable {
         // @TEST fill option chain & token valid, but value 0 -- revert ZeroAmount;
         if (params.fillOptions.length == 0) revert MissingFillOptions();
         for (uint256 i = 0; i < params.fillOptions.length; i++) {
-            if (availableChains[params.fillOptions[i].chainId] != true)
+            if (!chainData[params.fillOptions[i].chainId].valid)
                 revert InvalidFillChain();
             if (
-                availableChainTokens[params.fillOptions[i].chainId][
+                !chainTokens[params.fillOptions[i].chainId][
                     params.fillOptions[i].tokenAddress
-                ] != true
+                ]
             ) revert InvalidFillChainToken();
             if (params.fillOptions[i].tokenAmount == 0) revert ZeroAmount();
         }
@@ -489,9 +495,6 @@ contract AlphaBlueOfferer is Ownable {
             IERC20(token).allowance(from, to) >= amount &&
             IERC20(token).balanceOf(from) >= amount;
     }
-    function _sendCXFILL() internal {
-        // @TODO
-    }
 
     //
     //
@@ -513,7 +516,7 @@ contract AlphaBlueOfferer is Ownable {
 
     function createFill(FillParams calldata params) public {
         // Validate fill token
-        if (availableChainTokens[chainId][params.fillTokenAddress] != true)
+        if (chainTokens[chainId][params.fillTokenAddress] != true)
             revert InvalidFillChainToken();
 
         // Pull fill token
