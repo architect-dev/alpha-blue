@@ -50,10 +50,8 @@ contract AlphaBlueTest is AlphaBlueBase {
 
         assertEq(alphaBlueArb.offersCount(), 1, "1 offer created");
 
-        OfferStatus memory offerStatus = alphaBlueArb.getOfferStatus(offerId);
-
         assertEq(
-            offerStatus.status == OfferStatusEnum.OPEN,
+            offer.status == OfferStatus.OPEN,
             true,
             "Offer starts as open"
         );
@@ -108,10 +106,10 @@ contract AlphaBlueTest is AlphaBlueBase {
         vm.prank(user1);
         alphaBlueArb.cancelOffer(offerId);
 
-        OfferStatus memory offerStatus = alphaBlueArb.getOfferStatus(offerId);
+        OfferData memory offer = alphaBlueArb.getOffer(offerId);
 
         assertEq(
-            offerStatus.status == OfferStatusEnum.CANCELLED,
+            offer.status == OfferStatus.CANCELLED,
             true,
             "Offer cancelled"
         );
@@ -176,11 +174,7 @@ contract AlphaBlueTest is AlphaBlueBase {
         vm.prank(user2);
         alphaBlueArb.createFill(fillParams);
 
-        OfferStatus memory offerStatus = alphaBlueArb.getOfferStatus(offerId);
-        assertEq(
-            offerStatus.status == OfferStatusEnum.FILLED,
-            true,
-            "Offer filled"
-        );
+        OfferData memory offer = alphaBlueArb.getOffer(offerId);
+        assertEq(offer.status == OfferStatus.FILLED, true, "Offer filled");
     }
 }
