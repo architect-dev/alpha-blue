@@ -3,6 +3,7 @@ export type BlockchainNetworkDbModel = {
     name: string;
     block_explorer_url: string;
     rpc_url: string;
+    chain_image_url: string;
     last_read_events_block: number;
 
     created_at: string;
@@ -10,7 +11,7 @@ export type BlockchainNetworkDbModel = {
 };
 
 export type TokenMetadataDbModel = {
-    id: number;
+    pk_id: number;
     logo_url: string;
     symbol: string;
     address: string;

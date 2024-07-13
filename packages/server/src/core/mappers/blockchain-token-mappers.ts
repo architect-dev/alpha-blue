@@ -13,10 +13,12 @@ export function blockchainNetworkDbModelToBlockchainNetwork(
 ): BlockchainNetwork {
     return {
         id: blockchainNetworkDbModel.id,
+
         name: blockchainNetworkDbModel.name,
         blockExplorerUrl: blockchainNetworkDbModel.block_explorer_url,
         rpcUrl: blockchainNetworkDbModel.rpc_url,
         lastReadEventsBlock: blockchainNetworkDbModel.last_read_events_block,
+        chainImageUrl: blockchainNetworkDbModel.chain_image_url,
         updatedAt: dateStringToEpochSeconds(
             blockchainNetworkDbModel.updated_at
         ),
@@ -31,7 +33,7 @@ export function tokenMetadataDbModelToTokenMetadata(
     blockchainNetwork: BlockchainNetwork
 ): TokenMetadata {
     return {
-        pkId: tokenMetadataDbModel.id,
+        pkId: tokenMetadataDbModel.pk_id,
         logoUrl: tokenMetadataDbModel.logo_url,
         symbol: tokenMetadataDbModel.symbol,
         address: tokenMetadataDbModel.address,

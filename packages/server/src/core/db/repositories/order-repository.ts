@@ -1,7 +1,10 @@
 import { DatabaseManager } from "src/core/db/db-manager";
 import { getBlockchainNetwork } from "src/core/db/repositories/blockchain-repository";
 import { getFillHistory } from "src/core/db/repositories/fill-history-repository";
-import { getPotentialFills } from "src/core/db/repositories/potential-fill-repository";
+import {
+    getPotentialFills,
+    insertPotentialFill,
+} from "src/core/db/repositories/potential-fill-repository";
 import { getTokenMetadata } from "src/core/db/repositories/token-metadata-repository";
 import {
     newOrderToOrderDbModel,
@@ -26,8 +29,10 @@ export async function getOrder(orderPkId: number): Promise<Order | undefined> {
     else return undefined;
 
     const blockchainNetwork = await getBlockchainNetwork(dbOrder.network_id);
-    const tokenMetadata = await getTokenMetadata(dbOrder.token_pk_id);
-    const potentialFills = await getPotentialFills(orderPkId);
+    const tokenMetadata = await getTokenMetadata({
+        pkId: dbOrder.token_pk_id,
+    });
+    const potentialFills = await getPotentialFills({ pkId: orderPkId });
     const orderFills = await getFillHistory(orderPkId);
 
     return orderDbModelToOrder(
@@ -47,6 +52,10 @@ export async function insertNewOrder(
     const orderDbAttributes = newOrderToOrderDbModel(newOrder);
 
     const insertedPkId = await knex.insert(orderDbAttributes).into(orderTable);
+
+    newOrder.newPotentialFills.map(async (newPotentialFill) => {
+        await insertPotentialFill(newPotentialFill, insertedPkId[0]);
+    });
 
     return await getOrder(insertedPkId[0]);
 }

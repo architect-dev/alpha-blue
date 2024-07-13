@@ -23,7 +23,9 @@ export async function getFillHistory(
         const blockchainNetwork = await getBlockchainNetwork(
             dbFillHistory.network_id
         );
-        const tokenMetadata = await getTokenMetadata(dbFillHistory.token_pk_id);
+        const tokenMetadata = await getTokenMetadata({
+            pkId: dbFillHistory.token_pk_id,
+        });
 
         fillHistories.push(
             fillHistoryDbModelToFillHistory(

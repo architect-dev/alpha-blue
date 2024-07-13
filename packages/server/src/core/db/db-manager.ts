@@ -2,6 +2,7 @@ import { knex, Knex } from "knex";
 import MySql from "serverless-mysql";
 import { log, LogLevel } from "../utils/logger";
 
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const knexServerlessMysql = require("knex-serverless-mysql");
 
 export class DatabaseManager {
