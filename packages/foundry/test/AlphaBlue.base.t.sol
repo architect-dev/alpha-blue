@@ -6,6 +6,9 @@ import "../contracts/AlphaBlue.sol";
 import "../contracts/BasicERC20.sol";
 import "../contracts/BasicERC721.sol";
 
+import {IRouterClient, LinkToken} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
+import {CCIPLocalSimulator} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
+
 abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
     using QuikMaff for uint256;
     using SafeERC20 for IERC20;
@@ -17,6 +20,8 @@ abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
     BasicERC721 public mockNFT1;
 
     uint256 public nftWethDeposit = 0.01e18;
+
+    CCIPLocalSimulator public ccipLocalSimulator;
 
     // DATA
 
@@ -32,12 +37,16 @@ abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
     address payable public user4 = payable(address(103));
     address payable[4] public users;
 
-    uint256 public arbChainId = 1;
-    uint256 public baseChainId = 2;
-    uint256 public celoChainId = 3;
+    uint256 public arbChainId = 421614;
+    uint256 public baseChainId = 84532;
+    uint256 public celoChainId = 44787;
+
     AlphaBlue public alphaBlueArb;
     AlphaBlue public alphaBlueBase;
     AlphaBlue public alphaBlueCelo;
+
+    uint64 public mockChainSelector;
+    IRouterClient public router;
 
     // SETUP
 
@@ -73,16 +82,43 @@ abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
         USDC = new BasicERC20("USDC", "USDC", 6);
         BNB = new BasicERC20("BNB", "BNB", 18);
 
-        alphaBlueArb = new AlphaBlue(arbChainId, address(WETH), nftWethDeposit);
+        ccipLocalSimulator = new CCIPLocalSimulator();
+
+        (
+            uint64 chainSelector_,
+            IRouterClient sourceRouter, // IRouterClient destinationRouter_
+            ,
+            ,
+            // WETH9 wrappedNative_
+            LinkToken linkToken, // BurnMintERC677Helper ccipBnM_
+            // BurnMintERC677Helper ccipLnM_
+            ,
+
+        ) = ccipLocalSimulator.configuration();
+
+        mockChainSelector = chainSelector_;
+        router = sourceRouter;
+
+        alphaBlueArb = new AlphaBlue(
+            arbChainId,
+            address(WETH),
+            nftWethDeposit,
+            address(router),
+            address(linkToken)
+        );
         alphaBlueBase = new AlphaBlue(
             baseChainId,
             address(WETH),
-            nftWethDeposit
+            nftWethDeposit,
+            address(router),
+            address(linkToken)
         );
         alphaBlueCelo = new AlphaBlue(
             celoChainId,
             address(WETH),
-            nftWethDeposit
+            nftWethDeposit,
+            address(router),
+            address(linkToken)
         );
 
         _setUpAlphaBlueChains();
@@ -92,6 +128,20 @@ abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
         _giveTokens(user4);
 
         setLabels();
+
+        uint256 linkAmount = 5 ether;
+        ccipLocalSimulator.requestLinkFromFaucet(
+            address(alphaBlueArb),
+            linkAmount
+        );
+        ccipLocalSimulator.requestLinkFromFaucet(
+            address(alphaBlueBase),
+            linkAmount
+        );
+        ccipLocalSimulator.requestLinkFromFaucet(
+            address(alphaBlueCelo),
+            linkAmount
+        );
     }
 
     function _setUpAlphaBlueChains() internal {
@@ -249,11 +299,7 @@ abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
     function _prepExpectETHBalChange(uint256 id, address add) public {
         ethBalances[id][add] = add.balance;
     }
-    function _expectETHBalChange(
-        uint256 id,
-        address add,
-        int256 value
-    ) public view {
+    function _expectETHBalChange(uint256 id, address add, int256 value) public {
         _expectETHBalChange(id, add, value, "");
     }
     function _expectETHBalChange(
@@ -261,7 +307,7 @@ abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
         address add,
         int256 value,
         string memory label
-    ) public view {
+    ) public {
         assertEq(
             add.balance,
             uint256(int256(ethBalances[id][add]) + value),
@@ -282,7 +328,7 @@ abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
         address from,
         address to,
         uint256 value
-    ) public view {
+    ) public {
         assertEq(
             from.balance,
             ethBalances[id][from] - value,
@@ -370,5 +416,33 @@ abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
         fillParams.fillTokenAmount = fillTokenAmount;
         fillParams.adaDestAddress = address(0);
         fillParams.partialBP = 10000;
+    }
+
+    function _getChainSelector(
+        uint256 _chainId
+    ) internal pure returns (uint64) {
+        if (_chainId == 5) return 16015286601757825753; // Ethereum Sepolia
+        if (_chainId == 84532) return 10344971235874465080; // Base Sepolia
+        if (_chainId == 44787) return 3552045678561919002; // Celo Alfajores
+        if (_chainId == 80002) return 16281711391670634445; // Polygon Amoy
+        if (_chainId == 43113) return 14767482510784806043; // Avalanche Fuji
+        if (_chainId == 421614) return 3478487238524512106; // Arbitrum Sepolia
+
+        revert UnsupportedChainId();
+    }
+
+    function _getCCIPEncodedReceiver(
+        CCIPBlue memory ccipBlue
+    ) internal pure returns (bytes32) {
+        if (ccipBlue.messageType == MessageType.CFILL) {
+            return bytes32(abi.encode(ccipBlue.offerChain));
+        } else if (ccipBlue.messageType == MessageType.CXFILL) {
+            return bytes32(abi.encode(ccipBlue.fillChain));
+        } else if (ccipBlue.messageType == MessageType.CINVALID) {
+            return bytes32(abi.encode(ccipBlue.fillChain));
+        } else if (ccipBlue.messageType == MessageType.CDEADLINE) {
+            return bytes32(abi.encode(ccipBlue.offerChain));
+        }
+        return bytes32(abi.encode(address(0)));
     }
 }

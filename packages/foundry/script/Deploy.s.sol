@@ -43,18 +43,28 @@ contract DeployScript is ScaffoldETHDeploy {
         BNB = new BasicERC20("BNB", "BNB", 18);
         _markDeployment("BNB", address(BNB));
 
-        alphaBlueArb = new AlphaBlue(arbChainId, address(WETH), nftWethDeposit);
+        alphaBlueArb = new AlphaBlue(
+            arbChainId,
+            address(WETH),
+            nftWethDeposit,
+            address(0),
+            address(0)
+        );
         _markDeployment("alphaBlueArb", address(alphaBlueArb));
         alphaBlueBase = new AlphaBlue(
             baseChainId,
             address(WETH),
-            nftWethDeposit
+            nftWethDeposit,
+            address(0),
+            address(0)
         );
         _markDeployment("alphaBlueBase", address(alphaBlueBase));
         alphaBlueCelo = new AlphaBlue(
             celoChainId,
             address(WETH),
-            nftWethDeposit
+            nftWethDeposit,
+            address(0),
+            address(0)
         );
         _markDeployment("alphaBlueCelo", address(alphaBlueCelo));
 
