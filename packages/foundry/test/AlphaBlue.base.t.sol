@@ -85,7 +85,62 @@ abstract contract AlphaBlueBase is Test {
             nftWethDeposit
         );
 
+        _setUpAlphaBlueChains();
+
         setLabels();
+    }
+
+    function _setUpAlphaBlueChains() internal {
+        uint256[] memory chainsId = new uint256[](3);
+        chainsId[0] = arbChainId;
+        chainsId[1] = baseChainId;
+        chainsId[2] = celoChainId;
+
+        bool[] memory chainsValid = new bool[](3);
+
+        address[] memory chainsContract = new address[](3);
+        chainsContract[0] = address(alphaBlueArb);
+        chainsContract[1] = address(alphaBlueBase);
+        chainsContract[2] = address(alphaBlueCelo);
+
+        address[][] memory tokens = new address[][](3 * 4);
+        bool[][] memory tokensValid = new bool[][](3 * 4);
+
+        for (uint256 i = 0; i < 3 * 4; i += 4) {
+            chainsValid[i] = true;
+
+            tokens[i][0] = address(WETH);
+            tokens[i][1] = address(WBTC);
+            tokens[i][2] = address(USDC);
+            tokens[i][3] = address(BNB);
+
+            tokensValid[i][0] = true;
+            tokensValid[i][1] = true;
+            tokensValid[i][2] = true;
+            tokensValid[i][3] = true;
+        }
+
+        alphaBlueArb.setChainsAndTokens(
+            chainsId,
+            chainsValid,
+            chainsContract,
+            tokens,
+            tokensValid
+        );
+        alphaBlueBase.setChainsAndTokens(
+            chainsId,
+            chainsValid,
+            chainsContract,
+            tokens,
+            tokensValid
+        );
+        alphaBlueCelo.setChainsAndTokens(
+            chainsId,
+            chainsValid,
+            chainsContract,
+            tokens,
+            tokensValid
+        );
     }
 
     // TOKEN UTILS

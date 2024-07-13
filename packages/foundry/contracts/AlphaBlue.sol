@@ -251,7 +251,27 @@ contract AlphaBlue is Ownable {
         nftWethDeposit = _nftWethDeposit;
     }
 
-    function setChainsAndTokens() public onlyOwner {}
+    function setChainsAndTokens(
+        uint256[] calldata chainsId,
+        bool[] calldata chainsValid,
+        address[] calldata chainsContract,
+        address[][] calldata tokens,
+        bool[][] calldata tokensValid
+    ) public onlyOwner {
+        uint256 _chainId;
+        for (uint256 i = 0; i < chainsId.length; i++) {
+            _chainId = chainsId[i];
+            chainData[_chainId].valid = chainsValid[i];
+            chainData[_chainId].chainId = _chainId;
+            chainData[_chainId].contractAddress = chainsContract[i];
+
+            for (uint256 j = 0; j < tokens[_chainId].length; j++) {
+                chainTokens[_chainId][tokens[_chainId][j]] = tokensValid[
+                    _chainId
+                ][j];
+            }
+        }
+    }
 
     //
     //
