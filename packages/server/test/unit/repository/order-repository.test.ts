@@ -9,6 +9,7 @@ import {
     NewOrder,
     TokenMetadata,
 } from "src/core/models/domain-models";
+import { generateWalletAddress } from "src/core/utils/wallet-generator";
 
 let baseBlockchainNetwork: BlockchainNetwork;
 let usdcBaseTokenMetadata: TokenMetadata;
@@ -24,8 +25,8 @@ describe("Order Repository", () => {
 
     test("should get order by pkId", async () => {
         const newOrder: NewOrder = {
-            orderId: "123-2",
-            orderWalletAddress: "0x123",
+            orderId: "foo-84532",
+            orderWalletAddress: generateWalletAddress(),
             allowPartialFill: false,
             orderStatus: 1,
             orderDate: 123,

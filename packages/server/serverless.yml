@@ -20,7 +20,7 @@ functions:
                   method: "POST"
 
     get-orders:
-        handler: src/handlers/get-orders.getOrders
+        handler: src/handlers/get-orders.getHttpOrders
         timeout: 25
         memorySize: 1028
         events:
