@@ -15,7 +15,7 @@ export const SwitchTheme = ({ className }: { className?: string }) => {
       setTheme("light");
       return;
     }
-    setTheme("dark");
+    setTheme("light");
   };
 
   useEffect(() => {

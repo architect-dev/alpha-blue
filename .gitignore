@@ -23,3 +23,4 @@ node_modules
 dist
 
 .webpack/*
+packages/foundry/cache_forge/solidity-files-cache.json

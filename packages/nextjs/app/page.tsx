@@ -1,70 +1,69 @@
 "use client";
 
+// import { useAccount } from "wagmi";
+// import { Address } from "~~/components/scaffold-eth";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { NextPage } from "next";
-import { useAccount } from "wagmi";
-import { BugAntIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
-import { Address } from "~~/components/scaffold-eth";
+import { TradeOfferCard } from "~~/components/TradeOfferCard";
 
-const Home: NextPage = () => {
-  const { address: connectedAddress } = useAccount();
+// import { Balance } from "~~/components/scaffold-eth";
+
+// Import TradeOfferCard
+
+type Trade = {
+  id: number;
+  offer: string;
+  receive: { amount: number; token: string; chain: string }[];
+  send: { amount: number; token: string; chain: string }[];
+  status: string;
+  chain: string;
+};
+
+const Home = () => {
+  // const { address: connectedAddress } = useAccount();
+  const [trades, setTrades] = useState<Trade[]>([]);
+
+  // Placeholder for fetching trade data
+  useEffect(() => {
+    // Replace this with your actual data fetching logic
+    setTrades([
+      {
+        id: 1,
+        offer: "1 ETH",
+        receive: [
+          { amount: 3012, token: "USDT", chain: "Polygon" },
+          { amount: 2975, token: "USDC", chain: "Base" },
+        ],
+        send: [{ amount: 1, token: "ETH", chain: "Polygon" }],
+        status: "Waiting for a Participant",
+        chain: "Polygon, Base",
+      },
+      // Add more trades as needed
+    ]);
+  }, []);
 
   return (
-    <>
-      <div className="flex items-center flex-col flex-grow pt-10">
-        <div className="px-5">
-          <h1 className="text-center">
-            <span className="block text-2xl mb-2">Welcome to</span>
-            <span className="block text-4xl font-bold">Scaffold-ETH 2</span>
-          </h1>
-          <div className="flex justify-center items-center space-x-2 flex-col sm:flex-row">
-            <p className="my-2 font-medium">Connected Address:</p>
-            <Address address={connectedAddress} />
-          </div>
-          <p className="text-center text-lg">
-            Get started by editing{" "}
-            <code className="italic bg-base-300 text-base font-bold max-w-full break-words break-all inline-block">
-              packages/nextjs/app/page.tsx
-            </code>
-          </p>
-          <p className="text-center text-lg">
-            Edit your smart contract{" "}
-            <code className="italic bg-base-300 text-base font-bold max-w-full break-words break-all inline-block">
-              YourContract.sol
-            </code>{" "}
-            in{" "}
-            <code className="italic bg-base-300 text-base font-bold max-w-full break-words break-all inline-block">
-              packages/hardhat/contracts
-            </code>
-          </p>
-        </div>
+    <div className="container mx-auto p-4 min-h-screen">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold mt-8">All Trade Offers</h1>
 
-        <div className="flex-grow bg-base-300 w-full mt-16 px-8 py-12">
-          <div className="flex justify-center items-center gap-12 flex-col sm:flex-row">
-            <div className="flex flex-col bg-base-100 px-10 py-10 text-center items-center max-w-xs rounded-3xl">
-              <BugAntIcon className="h-8 w-8 fill-secondary" />
-              <p>
-                Tinker with your smart contract using the{" "}
-                <Link href="/debug" passHref className="link">
-                  Debug Contracts
-                </Link>{" "}
-                tab.
-              </p>
-            </div>
-            <div className="flex flex-col bg-base-100 px-10 py-10 text-center items-center max-w-xs rounded-3xl">
-              <MagnifyingGlassIcon className="h-8 w-8 fill-secondary" />
-              <p>
-                Explore your local transactions with the{" "}
-                <Link href="/blockexplorer" passHref className="link">
-                  Block Explorer
-                </Link>{" "}
-                tab.
-              </p>
-            </div>
-          </div>
-        </div>
+        <Link href="/create">
+          <button className="bg-blue-500 text-white px-4 py-2 mt-2 rounded">Create a Trade</button>
+        </Link>
       </div>
-    </>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {trades.map(trade => (
+          <TradeOfferCard
+            key={trade.id}
+            id={trade.id.toString()} // Ensure id is a string as expected by TradeOfferCardProps
+            offer={trade.offer}
+            receive={trade.receive.map(item => ({ ...item, amount: item.amount.toString() }))} // Convert amount to string
+            send={trade.send.map(item => ({ ...item, amount: item.amount.toString() }))} // Convert amount to string
+            status={trade.status}
+          />
+        ))}
+      </div>
+    </div>
   );
 };
 

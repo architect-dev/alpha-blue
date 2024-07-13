@@ -5,6 +5,7 @@ pragma solidity ^0.8.20;
 import "forge-std/console.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "./AlphaBlueEvents.sol";
 
 // STRUCTS / EVENTS / ERRORS
 
@@ -21,6 +22,19 @@ struct FillOption {
     address destAddress;
 }
 
+struct OfferParams {
+    // token offer
+    address tokenAddress;
+    uint256 tokenAmount;
+    // nft offer
+    address nftAddress;
+    uint256 nftId;
+    // settings
+    bool allowPartialFills;
+    uint256 expiration;
+    FillOption[] fillOptions;
+}
+
 struct OfferData {
     address owner;
     // token offer
@@ -33,22 +47,21 @@ struct OfferData {
     bool allowPartialFills;
     uint256 expiration;
     FillOption[] fillOptions;
+    // Deposit
     address depositTokenAddress;
     uint256 depositAmount;
+    // Status
+    uint256 filledBP;
+    uint256 pendingBP;
+    OfferStatus status;
+    OfferFillData[] offerFills;
 }
 
-enum OfferStatusEnum {
+enum OfferStatus {
     OPEN,
     DEADLINED,
     CANCELLED,
     FILLED
-}
-struct OfferStatus {
-    uint256 offerId;
-    uint256 filledBP;
-    uint256 pendingBP;
-    OfferStatusEnum status;
-    OfferFillData[] offerFills;
 }
 struct OfferFillData {
     uint256 fillId;
@@ -115,6 +128,7 @@ enum ErrorType {
     INVALID__OFFER_CHAIN_MISMATCH,
     INVALID__OFFER_ID,
     INVALID__TOKEN_MISMATCH,
+    INVALID__TOKEN_AMOUNT_MISMATCH,
     INVALID__NFT_MISMATCH,
     INVALID__PARTIAL_FILL_ON_NON_PARTIAL
 }
@@ -167,45 +181,6 @@ error AlreadyDeadlined();
 error CannotCancelWithPending();
 error OfferStatusNotOpen();
 
-interface AlphaBlueEvents {
-    // EVENTS
-    event OfferCreated(
-        uint256 indexed chainId,
-        address indexed creator,
-        uint256 indexed offerId
-    );
-    event OfferCancelled(
-        uint256 indexed chainId,
-        address indexed creator,
-        uint256 indexed offerId
-    );
-    event OfferDeadlined(
-        uint256 indexed chainId,
-        address indexed creator,
-        uint256 indexed offerId
-    );
-    event OfferFilled(
-        uint256 indexed chainId,
-        address indexed creator,
-        uint256 indexed offerId
-    );
-    event FillFailed(
-        uint256 indexed chainId,
-        address indexed filler,
-        uint256 indexed fillId
-    );
-    event FillXFilled(
-        uint256 indexed chainId,
-        address indexed filler,
-        uint256 indexed fillId
-    );
-    event FillDeadlined(
-        uint256 indexed chainId,
-        address indexed filler,
-        uint256 indexed fillId
-    );
-}
-
 // LIBRARIES
 
 library QuikMaff {
@@ -237,7 +212,6 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
 
     uint256 public offersCount = 0;
     mapping(uint256 => OfferData) public offers;
-    mapping(uint256 => OfferStatus) public offerStatuses;
 
     address public weth;
     uint256 public nftWethDeposit;
@@ -314,11 +288,6 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
     ) public view returns (OfferData memory offer) {
         offer = offers[offerId];
     }
-    function getOfferStatus(
-        uint256 offerId
-    ) public view returns (OfferStatus memory offerStatus) {
-        offerStatus = offerStatuses[offerId];
-    }
 
     // USER ACTIONS
 
@@ -380,10 +349,7 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
             offer.fillOptions.push(params.fillOptions[i]);
         }
 
-        // OFFER STATUS DATA
-
-        offerStatuses[offerId].status = OfferStatusEnum.OPEN;
-        offerStatuses[offerId].offerId = offerId;
+        offer.status = OfferStatus.OPEN;
 
         // TAKE DEPOSIT
 
@@ -411,15 +377,13 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
         if (offerId > offersCount) revert InvalidOfferId();
 
         OfferData storage offer = offers[offerId];
-        OfferStatus storage offerStatus = offerStatuses[offerId];
 
         if (offer.owner != msg.sender) revert NotOfferer();
-        if (offerStatus.pendingBP > 0) revert CannotCancelWithPending();
-        if (offerStatus.status != OfferStatusEnum.OPEN)
-            revert OfferStatusNotOpen();
+        if (offer.pendingBP > 0) revert CannotCancelWithPending();
+        if (offer.status != OfferStatus.OPEN) revert OfferStatusNotOpen();
 
         // Mark auction state as cancelled
-        offerStatus.status = OfferStatusEnum.CANCELLED;
+        offer.status = OfferStatus.CANCELLED;
 
         // Return deposit
         IERC20(offer.depositTokenAddress).safeTransfer(
@@ -437,6 +401,7 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
         ErrorType err = _handleCFILLReturnErrorType(sourceChain, ccipBlue);
         if (err == ErrorType.NONE) return;
 
+        ccipBlue.messageType = MessageType.CINVALID;
         ccipBlue.errorType = err;
         _sendCCIP(ccipBlue);
     }
@@ -471,9 +436,9 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
         // Validate expiration
         if (offer.expiration < block.timestamp)
             return ErrorType.UNAVAILABLE__EXPIRED;
-        if (offerStatuses[ccipBlue.offerId].status == OfferStatusEnum.DEADLINED)
+        if (offer.status == OfferStatus.DEADLINED)
             return ErrorType.UNAVAILABLE__DEADLINED;
-        if (offerStatuses[ccipBlue.offerId].status == OfferStatusEnum.CANCELLED)
+        if (offer.status == OfferStatus.CANCELLED)
             return ErrorType.UNAVAILABLE__CANCELLED;
 
         // Validate partials
@@ -481,12 +446,8 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
             ccipBlue.partialBP == 0 ||
             (offer.allowPartialFills == false && ccipBlue.partialBP != 10000)
         ) return ErrorType.INVALID__PARTIAL_FILL_ON_NON_PARTIAL;
-        if (
-            ccipBlue.partialBP >
-            (10000 -
-                offerStatuses[ccipBlue.offerId].filledBP -
-                offerStatuses[ccipBlue.offerId].pendingBP)
-        ) return ErrorType.UNAVAILABLE__FILL_BP;
+        if (ccipBlue.partialBP > (10000 - offer.filledBP - offer.pendingBP))
+            return ErrorType.UNAVAILABLE__FILL_BP;
 
         // Fill token
         bool fillMatched;
@@ -505,14 +466,13 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
                 offer.fillOptions[i].tokenAmount.scaleByBP(
                     ccipBlue.partialBP
                 ) != ccipBlue.fillTokenAmount
-            ) return ErrorType.INVALID__TOKEN_MISMATCH;
+            ) return ErrorType.INVALID__TOKEN_AMOUNT_MISMATCH;
         }
         if (!fillMatched) return ErrorType.INVALID__TOKEN_MISMATCH;
 
         // Add offerFillData to OfferStatus
-        uint256 offerFillId = offerStatuses[ccipBlue.offerId].offerFills.length;
-        fillsCount += 1;
-        offerStatuses[ccipBlue.offerId].offerFills.push(
+        uint256 offerFillId = offer.offerFills.length;
+        offer.offerFills.push(
             OfferFillData({
                 fillId: ccipBlue.fillId,
                 fillChain: ccipBlue.fillChain,
@@ -532,8 +492,8 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
         // and must be manually nudged by bob using `nudgeOffer`
         // ===
 
-        offerStatuses[ccipBlue.offerId].pendingBP += ccipBlue.partialBP;
-        offerStatuses[ccipBlue.offerId].offerFills[offerFillId].pending = true;
+        offer.pendingBP += ccipBlue.partialBP;
+        offer.offerFills[offerFillId].pending = true;
         _handleOfferFill(ccipBlue.offerId, offerFillId);
 
         return ErrorType.NONE;
@@ -542,15 +502,13 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
         if (offerId >= offersCount) revert InvalidOfferId();
         if (offers[offerId].owner != msg.sender) revert NotOfferer();
 
-        for (uint256 i = 0; i < offerStatuses[offerId].offerFills.length; i++) {
-            fillsCount += 1;
+        for (uint256 i = 0; i < offers[offerId].offerFills.length; i++) {
             _handleOfferFill(offerId, i);
         }
     }
     function _handleOfferFill(uint256 offerId, uint256 offerFillId) internal {
         OfferData storage offer = offers[offerId];
-        OfferStatus storage offerStatus = offerStatuses[offerId];
-        OfferFillData storage offerFill = offerStatus.offerFills[offerFillId];
+        OfferFillData storage offerFill = offer.offerFills[offerFillId];
 
         uint256 offerTokenPartialAmount = offer.tokenAmount.scaleByBP(
             offerFill.partialBP
@@ -575,12 +533,12 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
 
                 // Switch from pending to completed
                 offerFill.pending = false;
-                offerStatus.pendingBP -= offerFill.partialBP;
-                offerStatus.filledBP += offerFill.partialBP;
+                offer.pendingBP -= offerFill.partialBP;
+                offer.filledBP += offerFill.partialBP;
 
-                // Iff all BP is filled, mark offer as filled, return deposit to bob
-                if (offerStatus.filledBP == 10000) {
-                    offerStatus.status = OfferStatusEnum.FILLED;
+                // If all BP is filled, mark offer as filled, return deposit to bob
+                if (offer.filledBP == 10000) {
+                    offer.status = OfferStatus.FILLED;
                     IERC20(offer.depositTokenAddress).safeTransfer(
                         offer.owner,
                         offer.depositAmount
@@ -638,23 +596,20 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
 
     function _handleCDEADLINE(uint256, CCIPBlue memory ccipBlue) internal {
         OfferData storage offer = offers[ccipBlue.offerId];
-        OfferStatus storage offerStatus = offerStatuses[ccipBlue.offerId];
 
-        if (offerStatus.status == OfferStatusEnum.DEADLINED)
-            revert AlreadyDeadlined();
+        if (offer.status == OfferStatus.DEADLINED) revert AlreadyDeadlined();
 
-        OfferFillData storage offerFill = offerStatus.offerFills[0];
-        for (uint256 i = 0; i < offerStatus.offerFills.length; i++) {
-            fillsCount += 1;
-            if (offerStatus.offerFills[i].fillId != ccipBlue.fillId) continue;
-            offerFill = offerStatus.offerFills[i];
+        OfferFillData storage offerFill = offer.offerFills[0];
+        for (uint256 i = 0; i < offer.offerFills.length; i++) {
+            if (offer.offerFills[i].fillId != ccipBlue.fillId) continue;
+            offerFill = offer.offerFills[i];
         }
 
         IERC20(offer.depositTokenAddress).safeTransfer(
             offerFill.adaDestAddress,
             offer.depositAmount
         );
-        offerStatus.status = OfferStatusEnum.DEADLINED;
+        offer.status = OfferStatus.DEADLINED;
 
         emit OfferDeadlined(chainId, offer.owner, ccipBlue.offerId);
     }
@@ -677,6 +632,13 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
 
     uint256 public fillsCount = 0;
     mapping(uint256 => FillData) public fills;
+
+    function getFill(
+        uint256 fillId
+    ) public view returns (FillData memory fill) {
+        if (fillId >= fillsCount) revert InvalidFillId();
+        fill = fills[fillId];
+    }
 
     function createFill(FillParams calldata params) public {
         // Validate fill token
@@ -701,6 +663,8 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
         fillsCount += 1;
         FillData storage fill = fills[fillId];
 
+        fill.owner = msg.sender;
+        fill.status = FillStatus.PENDING;
         fill.offerChain = params.offerChain;
         fill.offerId = params.offerId;
         fill.fillTokenAddress = params.fillTokenAddress;
@@ -772,7 +736,6 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
 
     function triggerDeadline(uint256 fillId) public {
         if (fillId >= fillsCount) revert InvalidFillId();
-        fillsCount += 1;
 
         FillData storage fill = fills[fillId];
         if (fill.owner != msg.sender) revert NotFiller();
@@ -842,14 +805,11 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
     function receiveCCIP(CCIPBlue memory ccipBlue) public {
         if (ccipBlue.messageType == MessageType.CFILL) {
             _handleCFILL(chainId, ccipBlue);
-        }
-        if (ccipBlue.messageType == MessageType.CXFILL) {
+        } else if (ccipBlue.messageType == MessageType.CXFILL) {
             _handleCXFILL(chainId, ccipBlue);
-        }
-        if (ccipBlue.messageType == MessageType.CINVALID) {
+        } else if (ccipBlue.messageType == MessageType.CINVALID) {
             _handleCINVALID(chainId, ccipBlue);
-        }
-        if (ccipBlue.messageType == MessageType.CDEADLINE) {
+        } else if (ccipBlue.messageType == MessageType.CDEADLINE) {
             _handleCDEADLINE(chainId, ccipBlue);
         }
     }
