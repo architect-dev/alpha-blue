@@ -168,7 +168,12 @@ const sync = async () => {
 					chainData[tokenSetIndex].tokens.map((token) => token.valid),
 				],
 			})
-			await walletClient.writeContract(request)
+			const hash = await walletClient.writeContract(request)
+			const transaction = await publicClient.waitForTransactionReceipt({ hash })
+			console.log({
+				hash,
+				transaction,
+			})
 		}
 	}
 }
