@@ -1,0 +1,21 @@
+{
+  "unknown": {
+    "versionSfCore": null,
+    "versionFramework": "4.1.12",
+    "isWithinCompose": false,
+    "composeOrgName": null,
+    "composeServiceName": null,
+    "command": [],
+    "options": {},
+    "error": {
+      "message": "Unauthorized",
+      "stack": "Error: Unauthorized\n    at Authentication.getClientDataFromAccessKey (file:///Users/mjr/.serverless/releases/4.1.12/package/dist/sf-core.js:912:17054)\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\n    at async Authentication.getAuthenticatedData (file:///Users/mjr/.serverless/releases/4.1.12/package/dist/sf-core.js:912:3687)\n    at async routeNew (file:///Users/mjr/.serverless/releases/4.1.12/package/dist/sf-core.js:880:7950)\n    at async commandOnboarding (file:///Users/mjr/.serverless/releases/4.1.12/package/dist/sf-core.js:880:5024)\n    at async catchAllHandler (file:///Users/mjr/.serverless/releases/4.1.12/package/dist/sf-core.js:905:19715)\n    at async runCommand (file:///Users/mjr/.serverless/releases/4.1.12/package/dist/sf-core.js:909:4100)\n    at async route (file:///Users/mjr/.serverless/releases/4.1.12/package/dist/sf-core.js:920:14539)\n    at async Object.run2 [as run] (file:///Users/mjr/.serverless/releases/4.1.12/package/dist/sf-core.js:920:16444)\n    at async run3 (file:///Users/mjr/.serverless/releases/4.1.12/package/dist/sf-core.js:920:17704)"
+    },
+    "machineId": "85a764999a76d64e8ad191e141d581a4",
+    "serviceProviderAwsCfStackId": null,
+    "serviceProviderAwsCfStackCreated": null,
+    "serviceProviderAwsCfStackUpdated": null,
+    "serviceProviderAwsCfStackStatus": null,
+    "serviceProviderAwsCfStackOutputs": null
+  }
+}

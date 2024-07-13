@@ -1,0 +1,36 @@
+{
+    "ts-node": {
+        "compilerOptions": {
+            "module": "commonjs"
+        }
+    },
+    "compilerOptions": {
+        "lib": ["esnext"],
+        "module": "esnext",
+        "moduleResolution": "node",
+        "resolveJsonModule": true,
+        "removeComments": true,
+        "preserveConstEnums": true,
+        "strict": true,
+
+        "noImplicitReturns": true,
+        "allowUnreachableCode": false,
+        "noFallthroughCasesInSwitch": true,
+
+        "target": "esnext",
+        "outDir": "./dist",
+        "declaration": true,
+        "sourceMap": true,
+        "baseUrl": ".",
+
+        "esModuleInterop": true,
+        "experimentalDecorators": true,
+        "allowSyntheticDefaultImports": true,
+        "allowJs": false,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "types": ["jest", "node"],
+        "jsx": "react-jsx"
+    },
+    "exclude": ["dist", "node_modules"]
+}

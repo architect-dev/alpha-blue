@@ -2,6 +2,10 @@
 src = 'contracts'
 out = 'out'
 libs = ['lib']
+cache_path  = 'cache_forge'
+solc = '0.8.20'
+optimizer = true
+optimizer-runs = 200
 fs_permissions = [{ access = "read-write", path = "./"}]
 
 [rpc_endpoints]
@@ -28,15 +32,11 @@ zkSync = "https://mainnet.era.zksync.io"
 scrollSepolia = "https://sepolia-rpc.scroll.io"
 scroll = "https://rpc.scroll.io"
 
-[etherscan]
-polygonMumbai = { key = "${ETHERSCAN_API_KEY}" }
-sepolia = { key = "${ETHERSCAN_API_KEY}" }
-
 
 [fmt]
 multiline_func_header = "params_first"
-line_length = 80
-tab_width = 2
+line_length = 120
+tab_width = 4
 quote_style = "double"
 bracket_spacing = true
 int_types = "long"

@@ -1,0 +1,1214 @@
+[
+  {
+    "type": "constructor",
+    "inputs": [
+      {
+        "name": "_chainId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_weth",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "_nftWethDeposit",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "cancelOffer",
+    "inputs": [
+      {
+        "name": "offerId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "chainData",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "valid",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "chainId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "contractAddress",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "chainId",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "chainTokens",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "createFill",
+    "inputs": [
+      {
+        "name": "params",
+        "type": "tuple",
+        "internalType": "struct FillParams",
+        "components": [
+          {
+            "name": "offerChain",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "offerId",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "offerTokenAddress",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "offerTokenAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "offerNftAddress",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "offerNftId",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "fillTokenAddress",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "fillTokenAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "adaDestAddress",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "partialBP",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "createOffer",
+    "inputs": [
+      {
+        "name": "params",
+        "type": "tuple",
+        "internalType": "struct OfferData",
+        "components": [
+          {
+            "name": "owner",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenAddress",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "nftAddress",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "nftId",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "allowPartialFills",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "expiration",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "fillOptions",
+            "type": "tuple[]",
+            "internalType": "struct FillOption[]",
+            "components": [
+              {
+                "name": "chainId",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "tokenAddress",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "tokenAmount",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "destAddress",
+                "type": "address",
+                "internalType": "address"
+              }
+            ]
+          },
+          {
+            "name": "depositTokenAddress",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "depositAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "fills",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "owner",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "offerChain",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "offerId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "fillTokenAddress",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "fillTokenAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "deadline",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "adaDestAddress",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "status",
+        "type": "uint8",
+        "internalType": "enum FillStatus"
+      },
+      {
+        "name": "errorType",
+        "type": "uint8",
+        "internalType": "enum ErrorType"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "fillsCount",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getOffer",
+    "inputs": [
+      {
+        "name": "offerId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "offer",
+        "type": "tuple",
+        "internalType": "struct OfferData",
+        "components": [
+          {
+            "name": "owner",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenAddress",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "nftAddress",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "nftId",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "allowPartialFills",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "expiration",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "fillOptions",
+            "type": "tuple[]",
+            "internalType": "struct FillOption[]",
+            "components": [
+              {
+                "name": "chainId",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "tokenAddress",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "tokenAmount",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "destAddress",
+                "type": "address",
+                "internalType": "address"
+              }
+            ]
+          },
+          {
+            "name": "depositTokenAddress",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "depositAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getOfferStatus",
+    "inputs": [
+      {
+        "name": "offerId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "offerStatus",
+        "type": "tuple",
+        "internalType": "struct OfferStatus",
+        "components": [
+          {
+            "name": "offerId",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "filledBP",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "pendingBP",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "status",
+            "type": "uint8",
+            "internalType": "enum OfferStatusEnum"
+          },
+          {
+            "name": "offerFills",
+            "type": "tuple[]",
+            "internalType": "struct OfferFillData[]",
+            "components": [
+              {
+                "name": "fillId",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "fillChain",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "fillTokenAddress",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "fillTokenAmount",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "partialBP",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "deadline",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "adaDestAddress",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "bobDestAddress",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "pending",
+                "type": "bool",
+                "internalType": "bool"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "nftWethDeposit",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "nudgeOffer",
+    "inputs": [
+      {
+        "name": "offerId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "offerStatuses",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "offerId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "filledBP",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "pendingBP",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "status",
+        "type": "uint8",
+        "internalType": "enum OfferStatusEnum"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "offers",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "owner",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "tokenAddress",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "tokenAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "nftAddress",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "nftId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "allowPartialFills",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "expiration",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "depositTokenAddress",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "depositAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "offersCount",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "owner",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "receiveCCIP",
+    "inputs": [
+      {
+        "name": "ccipBlue",
+        "type": "tuple",
+        "internalType": "struct CCIPBlue",
+        "components": [
+          {
+            "name": "messageType",
+            "type": "uint8",
+            "internalType": "enum MessageType"
+          },
+          {
+            "name": "bobDestAddress",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "adaDestAddress",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "offerChain",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "offerId",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "fillChain",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "fillId",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "offerTokenAddress",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "offerTokenAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "offerNftAddress",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "offerNftId",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "fillTokenAddress",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "fillTokenAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "partialBP",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "deadline",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "errorType",
+            "type": "uint8",
+            "internalType": "enum ErrorType"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "renounceOwnership",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setChainAndTokens",
+    "inputs": [
+      {
+        "name": "_chainId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "chainsValid",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "chainsContract",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "tokens",
+        "type": "address[]",
+        "internalType": "address[]"
+      },
+      {
+        "name": "tokensValid",
+        "type": "bool[]",
+        "internalType": "bool[]"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setChainsAndTokens",
+    "inputs": [
+      {
+        "name": "chainsId",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "chainsValid",
+        "type": "bool[]",
+        "internalType": "bool[]"
+      },
+      {
+        "name": "chainsContract",
+        "type": "address[]",
+        "internalType": "address[]"
+      },
+      {
+        "name": "tokens",
+        "type": "address[][]",
+        "internalType": "address[][]"
+      },
+      {
+        "name": "tokensValid",
+        "type": "bool[][]",
+        "internalType": "bool[][]"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "transferOwnership",
+    "inputs": [
+      {
+        "name": "newOwner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "triggerDeadline",
+    "inputs": [
+      {
+        "name": "fillId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "weth",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "event",
+    "name": "FillDeadlined",
+    "inputs": [
+      {
+        "name": "chainId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "filler",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "fillId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "FillFailed",
+    "inputs": [
+      {
+        "name": "chainId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "filler",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "fillId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "FillXFilled",
+    "inputs": [
+      {
+        "name": "chainId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "filler",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "fillId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OfferCancelled",
+    "inputs": [
+      {
+        "name": "chainId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "creator",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "offerId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OfferCreated",
+    "inputs": [
+      {
+        "name": "chainId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "creator",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "offerId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OfferDeadlined",
+    "inputs": [
+      {
+        "name": "chainId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "creator",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "offerId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OfferFilled",
+    "inputs": [
+      {
+        "name": "chainId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "creator",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "offerId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OwnershipTransferred",
+    "inputs": [
+      {
+        "name": "previousOwner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "newOwner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "AddressEmptyCode",
+    "inputs": [
+      {
+        "name": "target",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "AddressInsufficientBalance",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "AlreadyDeadlined",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "AlreadyXFilled",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "CannotCancelWithPending",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ChainMismatch",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "FailedInnerCall",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InsufficientAllowanceOrBalance",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidApproval",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidChain",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidChainToken",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidFillId",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidNFTOrder",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidOfferId",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MissingFillOptions",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MissingOfferTokenOrNft",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotFiller",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotOfferer",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotPassedDeadline",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "OfferStatusNotOpen",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "OwnableInvalidOwner",
+    "inputs": [
+      {
+        "name": "owner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "OwnableUnauthorizedAccount",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SafeERC20FailedOperation",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ZeroAmount",
+    "inputs": []
+  }
+]
