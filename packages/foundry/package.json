@@ -11,7 +11,6 @@
 		"fork": "anvil --fork-url ${0:-mainnet} --chain-id 31337 --config-out localhost.json",
 		"format": "forge fmt && prettier --write ./script/**/*.js",
 		"generate": "node script/generateAccount.js",
-		"lint": "forge fmt --check && prettier --check ./script/**/*.js",
 		"test": "forge test",
 		"verify": "forge build --build-info --build-info-path out/build-info/ && forge script script/VerifyAll.s.sol --ffi --rpc-url ${1:-default_network}",
 		"generate:abi:AlphaBlue": "forge inspect contracts/AlphaBlue.sol:AlphaBlue abi > ../nextjs/contracts/AlphaBlue.json",
