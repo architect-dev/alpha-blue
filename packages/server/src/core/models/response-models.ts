@@ -1,5 +1,5 @@
 export type PossibleOrderFill = {
-    amount: bigint;
+    amount: string;
     token: string;
     chain: string;
 };
@@ -13,7 +13,7 @@ export type TokenDetails = {
 };
 
 export type OfferDetails = {
-    amount: bigint;
+    amount: string;
     chain: string;
     tokenDetails: TokenDetails;
 };

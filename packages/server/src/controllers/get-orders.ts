@@ -7,7 +7,7 @@ export async function getHttpOrders(req: any) {
     const orders = await getOrders({});
 
     const ordersResponse = orders.map((order) => {
-        toGetOrdersHttpResponse(order);
+        return toGetOrdersHttpResponse(order);
     });
 
     return ordersResponse;

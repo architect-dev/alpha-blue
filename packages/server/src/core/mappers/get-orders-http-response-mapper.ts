@@ -9,7 +9,7 @@ export function toGetOrdersHttpResponse(order: Order): GetOrderHttpResponse {
         const { tokenMetadata, tokenAmount } = fill;
 
         return {
-            amount: BigInt(tokenAmount),
+            amount: tokenAmount,
             token: tokenMetadata.address,
             decimals: tokenMetadata.decimals,
             chain: tokenMetadata.blockchainNetwork.name,
@@ -24,7 +24,7 @@ export function toGetOrdersHttpResponse(order: Order): GetOrderHttpResponse {
     });
 
     const offer = {
-        amount: BigInt(order.tokenAmount),
+        amount: order.tokenAmount,
         chain: order.blockchainNetwork.name,
         tokenDetails: {
             logoUrl: order.tokenMetadata.logoUrl,
