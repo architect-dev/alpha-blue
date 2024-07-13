@@ -11,8 +11,8 @@ abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
     using SafeERC20 for IERC20;
 
     BasicERC20 public WETH;
-    BasicERC20WithDecimals public WBTC;
-    BasicERC20WithDecimals public USDC;
+    BasicERC20 public WBTC;
+    BasicERC20 public USDC;
     BasicERC20 public BNB;
     BasicERC721 public mockNFT1;
 
@@ -68,10 +68,10 @@ abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
         user2PK = user2PKTemp;
         users = [user1, user2, user3, user4];
 
-        WETH = new BasicERC20("WETH", "WETH");
-        WBTC = new BasicERC20WithDecimals("WBTC", "WBTC", 8);
-        USDC = new BasicERC20WithDecimals("USDC", "USDC", 6);
-        BNB = new BasicERC20("BNB", "BNB");
+        WETH = new BasicERC20("WETH", "WETH", 18);
+        WBTC = new BasicERC20("WBTC", "WBTC", 8);
+        USDC = new BasicERC20("USDC", "USDC", 6);
+        BNB = new BasicERC20("BNB", "BNB", 18);
 
         alphaBlueArb = new AlphaBlue(arbChainId, address(WETH), nftWethDeposit);
         alphaBlueBase = new AlphaBlue(
