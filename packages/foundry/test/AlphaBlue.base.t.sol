@@ -24,7 +24,7 @@ abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
     CCIPLocalSimulator public ccipLocalSimulator;
 
     // DATA
-
+    address public owner = address(this); // Used to mock NFT transfer
     address public deployer = 0xb4c79daB8f259C7Aee6E5b2Aa729821864227e84;
     address public sender = 0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496;
     address public dead = 0x000000000000000000000000000000000000dEaD;

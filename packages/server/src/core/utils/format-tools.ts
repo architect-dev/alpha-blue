@@ -1,5 +1,9 @@
-export function formatContractId(blockchainName: string, offerId: number) {
-    return `${blockchainName.replace(" ", "-")}-${offerId}`;
+export function formatContractId(
+    blockchainName: string,
+    source: string,
+    offerId: number
+) {
+    return `${blockchainName.replace(" ", "-")}-${source}-${offerId}`;
 }
 
 export function stripContractId(id: string) {

@@ -9,6 +9,8 @@ export enum FillStatus {
     "Invalid" = 2,
     "Succeeded" = 3,
     "Expired" = 4,
+    "FillFailed" = 5,
+    "XFillFailed" = 6,
 }
 
 export type BlockchainNetwork = {

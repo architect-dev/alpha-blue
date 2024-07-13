@@ -13,7 +13,6 @@ export function blockchainNetworkDbModelToBlockchainNetwork(
 ): BlockchainNetwork {
     return {
         id: blockchainNetworkDbModel.id,
-
         name: blockchainNetworkDbModel.name,
         blockExplorerUrl: blockchainNetworkDbModel.block_explorer_url,
         rpcUrl: blockchainNetworkDbModel.rpc_url,

@@ -1,256 +1,174 @@
 /* eslint-disable @typescript-eslint/ban-types */
-import { Address, BigInt } from '@graphprotocol/graph-ts'
+import { Address, BigInt, Bytes } from '@graphprotocol/graph-ts'
 import { Offer, OfferFill, Fill } from '../generated/schema'
 import {
 	OfferCreated as OfferCreatedEvent,
 	OfferCancelled as OfferCancelledEvent,
 	OfferDeadlined as OfferDeadlinedEvent,
 	OfferFilled as OfferFilledEvent,
+	FillCreated as FillCreatedEvent,
 	FillFailed as FillFailedEvent,
 	FillXFilled as FillXFilledEvent,
 	FillDeadlined as FillDeadlinedEvent,
-} from '../generated/Auctioneer/Auctioneer'
+} from '../generated/AlphaBlue/AlphaBlue'
+import { AlphaBlue } from '../generated/AlphaBlue/AlphaBlue'
 
 // ENTITIES
 
-function getOffer(offerId: BigInt): Offer {
-	let offerEntity = Offer.load(offerId.toString())
+function getOffer(offerChain: BigInt, offerId: BigInt): Offer {
+	const id = offerChain.toString().concat('_').concat(offerId.toString())
+
+	let offerEntity = Offer.load(id)
 
 	if (offerEntity == null) {
-		offerEntity = new Offer(offerId.toString())
+		offerEntity = new Offer(id)
 	}
 
 	return offerEntity
 }
 
-function getFill(fillId: BigInt): Fill {
-	let fillEntity = Fill.load(fillId.toString())
+function getFill(fillChain: BigInt, fillId: BigInt): Fill {
+	const id = fillChain.toString().concat('_').concat(fillId.toString())
+	let fillEntity = Fill.load(id)
 
 	if (fillEntity == null) {
-		fillEntity = new Fill(fillId.toString())
+		fillEntity = new Fill(id)
 	}
 
 	return fillEntity
 }
 
-function getOfferFill(offerFillId: BigInt): OfferFill {
-	let offerFillEntity = OfferFill.load(offerFillId.toString())
+function getOfferFill(offerChain: BigInt, offerId: BigInt, fillChain: BigInt, fillId: BigInt): OfferFill {
+	const id = offerChain.toString().concat('_').concat(offerId.toString()).concat(fillChain.toString()).concat('_').concat(fillId.toString())
+
+	let offerFillEntity = OfferFill.load(id)
 
 	if (offerFillEntity == null) {
-		offerFillEntity = new OfferFill(offerFillId.toString())
+		offerFillEntity = new OfferFill(id)
 	}
 
 	return offerFillEntity
 }
 
-export function handleOfferCreated(event: OfferCreatedEvent): void {}
+export function handleOfferCreated(event: OfferCreatedEvent): void {
+	let alphaBlue = AlphaBlue.bind(event.address)
+	const createdOffer = alphaBlue.getOffer(event.params.offerId)
 
-// AUCTIONS
+	let offerEntity = getOffer(event.params.chainId, event.params.offerId)
 
-export function handleAuctionCreated(event: AuctionCreatedEvent): void {
-	const lot = event.params._lot.toString()
+	offerEntity.owner = createdOffer.owner
+	offerEntity.tokenAddress = createdOffer.tokenAddress
+	offerEntity.tokenAmount = createdOffer.tokenAmount
+	offerEntity.nftAddress = createdOffer.nftAddress
+	offerEntity.nftId = createdOffer.nftId
+	offerEntity.allowPartialFills = createdOffer.allowPartialFills
+	offerEntity.created = createdOffer.created
+	offerEntity.expiration = createdOffer.expiration
+	// offerEntity.fillOptions = createdOffer.fillOptions
+	offerEntity.depositTokenAddress = createdOffer.depositTokenAddress
+	offerEntity.depositAmount = createdOffer.depositAmount
+	offerEntity.filledBP = createdOffer.filledBP
+	offerEntity.pendingBP = createdOffer.pendingBP
+	offerEntity.status = createdOffer.status
+	offerEntity.offerFills = []
 
-	// Entity
-	const auctionEntity = new Auction(lot)
-	auctionEntity.lot = event.params._lot
-	auctionEntity.eventIndex = 0
-	auctionEntity.save()
-
-	// Create info message
-	const auctionCreatedEventEntity = new AuctionEvent(lot.concat('_').concat(auctionEntity.eventIndex.toString()))
-	auctionCreatedEventEntity.type = 'State'
-	auctionCreatedEventEntity.auction = auctionEntity.id
-	auctionCreatedEventEntity.index = 0
-	auctionCreatedEventEntity.message = 'CREATED'
-	auctionCreatedEventEntity.timestamp = event.block.timestamp
-	auctionCreatedEventEntity.save()
+	offerEntity.save()
 }
 
-export function handleAuctionCancelled(event: AuctionCancelledEvent): void {
-	const lot = event.params._lot.toString()
+export function handleOfferCancelled(event: OfferCancelledEvent): void {
+	let offerEntity = getOffer(event.params.chainId, event.params.offerId)
 
-	const auctionEntity = Auction.load(lot)!
-	auctionEntity.eventIndex += 1
-	auctionEntity.save()
+	offerEntity.status = 2
 
-	const cancelledEventEntity = new AuctionEvent(lot.concat('_').concat(auctionEntity.eventIndex.toString()))
-	cancelledEventEntity.type = 'State'
-	cancelledEventEntity.index = auctionEntity.eventIndex
-	cancelledEventEntity.auction = auctionEntity.id
-	cancelledEventEntity.message = 'CANCELLED'
-	cancelledEventEntity.timestamp = event.block.timestamp
-	cancelledEventEntity.save()
+	offerEntity.save()
 }
 
-// USER
+export function handleOfferDeadlined(event: OfferDeadlinedEvent): void {
+	let offerEntity = getOffer(event.params.chainId, event.params.offerId)
 
-export function handleUpdatedAlias(event: UpdatedAliasEvent): void {
-	const userEntity = getUserEntity(event.params._user)
-	if (userEntity.muted) return
+	offerEntity.status = 1
 
-	userEntity.alias = event.params._alias
-	userEntity.save()
+	offerEntity.save()
 }
 
-export function handleMutedUser(event: MutedUserEvent): void {
-	const userEntity = getUserEntity(event.params._user)
-	userEntity.muted = event.params._muted
-	if (userEntity.muted) {
-		userEntity.alias = ''
-	}
-	userEntity.save()
+export function handleOfferFilled(event: OfferFilledEvent): void {
+	let offerEntity = getOffer(event.params.chainId, event.params.offerId)
+
+	let alphaBlue = AlphaBlue.bind(event.address)
+	const updatedOffer = alphaBlue.getOffer(event.params.offerId)
+
+	offerEntity.pendingBP = updatedOffer.pendingBP
+	offerEntity.filledBP = updatedOffer.filledBP
+	offerEntity.status = updatedOffer.status
+	offerEntity.status = updatedOffer.status
+
+	offerEntity.save()
+
+	// TODO: figure this out
+	let offerFillEntity = getOfferFill(event.params.chainId, event.params.offerId, BigInt.fromI32(0), BigInt.fromI32(0))
+
+	offerFillEntity.pending = false
+
+	offerFillEntity.save()
 }
 
-// ACTIONS
+export function handleFillCreated(event: FillCreatedEvent): void {
+	let fillEntity = getFill(event.params.chainId, event.params.fillId)
 
-export function handleBid(event: BidEvent): void {
-	const lot = event.params._lot.toString()
-	const user = event.params._user
+	let alphaBlue = AlphaBlue.bind(event.address)
+	const createdFill = alphaBlue.getFill(event.params.fillId)
 
-	const auctionEntity = Auction.load(lot)!
-	auctionEntity.eventIndex += 1
-	auctionEntity.save()
+	fillEntity.owner = createdFill.owner
+	fillEntity.offerChain = createdFill.offerChain
+	fillEntity.offerId = createdFill.offerId
+	fillEntity.fillTokenAddress = createdFill.fillTokenAddress
+	fillEntity.fillTokenAmount = createdFill.fillTokenAmount
+	fillEntity.deadline = createdFill.deadline
+	fillEntity.partialBP = createdFill.partialBP
+	fillEntity.status = createdFill.status
+	fillEntity.errorType = createdFill.errorType
 
-	const userEntity = getUserEntity(user)
-	const participantEntity = getAuctionParticipantEntity(lot, user)
+	fillEntity.save()
 
-	// User Stats
-	const isFirstBid = !participantEntity.hasBid
+	let offerFillEntity = getOfferFill(event.params.chainId, event.params.fillId, createdFill.offerChain, createdFill.offerId)
 
-	userEntity.totalBidsCount = userEntity.totalBidsCount.plus(event.params._bidCount)
-	if (isFirstBid) {
-		const interactedAuctions = userEntity.interactedAuctions
-		interactedAuctions.push(lot)
-		userEntity.interactedAuctions = interactedAuctions
+	offerFillEntity.fillId = event.params.fillId
+	offerFillEntity.fillChain = event.params.chainId
+	offerFillEntity.fillTokenAddress = createdFill.fillTokenAddress
+	offerFillEntity.fillTokenAmount = createdFill.fillTokenAmount
+	offerFillEntity.partialBP = createdFill.partialBP
+	offerFillEntity.deadline = createdFill.deadline
+	offerFillEntity.adaDestAddress = createdFill.adaDestAddress
+	offerFillEntity.bobDestAddress = Address.zero()
+	offerFillEntity.pending = true
 
-		userEntity.totalAuctionsParticipated += 1
-	}
-
-	userEntity.save()
-
-	participantEntity.hasBid = true
-	participantEntity.lastBidTimestamp = event.params._timestamp
-	participantEntity.rune = event.params._rune
-	participantEntity.muted = userEntity.muted
-	participantEntity.alias = event.params._alias
-	participantEntity.save()
-
-	// Stats
-	const switchedRunes = event.params._prevRune !== 0 && event.params._rune !== event.params._prevRune
-	const message = userEntity.muted ? '' : event.params._message
-	updateStats(event.params._bidCount, switchedRunes, message)
-
-	const bidEventEntity = new AuctionEvent(lot.toString().concat('_').concat(auctionEntity.eventIndex.toString()))
-	bidEventEntity.type = 'Bid'
-	bidEventEntity.index = auctionEntity.eventIndex
-	bidEventEntity.auction = auctionEntity.id
-	bidEventEntity.user = user
-	bidEventEntity.alias = userEntity.muted ? '' : userEntity.alias
-	bidEventEntity.prevRune = event.params._prevRune
-	bidEventEntity.rune = event.params._rune
-	bidEventEntity.message = message
-	bidEventEntity.bid = event.params._bid
-	bidEventEntity.bidCount = event.params._bidCount
-	bidEventEntity.timestamp = event.block.timestamp
-	bidEventEntity.save()
+	offerFillEntity.save()
 }
 
-export function handleSelectedRune(event: SelectedRuneEvent): void {
-	const lot = event.params._lot.toString()
-	const user = event.params._user
+export function handleFillFailed(event: FillFailedEvent): void {
+	let fillEntity = getFill(event.params.chainId, event.params.fillId)
 
-	const userEntity = getUserEntity(user)
+	let alphaBlue = AlphaBlue.bind(event.address)
+	const updatedFill = alphaBlue.getFill(event.params.fillId)
 
-	const participantEntity = getAuctionParticipantEntity(lot, user)
-	participantEntity.alias = event.params._alias
-	participantEntity.rune = event.params._rune
-	participantEntity.muted = userEntity.muted
-	participantEntity.save()
+	fillEntity.status = updatedFill.status
+	fillEntity.errorType = updatedFill.errorType
 
-	// Stats
-	const switchedRunes = event.params._prevRune !== 0 && event.params._rune !== event.params._prevRune
-	const message = userEntity.muted ? '' : event.params._message
-	updateStats(BigInt.zero(), switchedRunes, message)
-
-	const auctionEntity = Auction.load(lot)!
-	auctionEntity.eventIndex += 1
-	auctionEntity.save()
-
-	const selectedRuneEventEntity = new AuctionEvent(lot.toString().concat('_').concat(auctionEntity.eventIndex.toString()))
-	selectedRuneEventEntity.type = 'SelectedRune'
-	selectedRuneEventEntity.index = auctionEntity.eventIndex
-	selectedRuneEventEntity.auction = auctionEntity.id
-	selectedRuneEventEntity.user = user
-	selectedRuneEventEntity.alias = userEntity.muted ? '' : userEntity.alias
-	selectedRuneEventEntity.prevRune = event.params._prevRune
-	selectedRuneEventEntity.rune = event.params._rune
-	selectedRuneEventEntity.message = message
-	selectedRuneEventEntity.save()
+	fillEntity.save()
 }
 
-export function handleClaim(event: ClaimedEvent): void {
-	const lot = event.params._lot.toString()
-	const user = event.params._user
+export function handleFillXFilled(event: FillXFilledEvent): void {
+	let fillEntity = getFill(event.params.chainId, event.params.fillId)
 
-	// User Stats
-	const userEntity = getUserEntity(user)
-	userEntity.totalAuctionsWon = userEntity.totalAuctionsWon.plus(BigInt.fromI32(1))
-	userEntity.save()
+	fillEntity.status = 2
 
-	// Stats
-	const message = userEntity.muted ? '' : event.params._message
-	updateStats(BigInt.zero(), false, message)
-
-	const participantEntity = getAuctionParticipantEntity(lot, user)
-	participantEntity.alias = event.params._alias
-	participantEntity.muted = userEntity.muted
-	participantEntity.save()
-
-	const auctionEntity = Auction.load(lot)!
-	auctionEntity.eventIndex += 1
-	auctionEntity.save()
-
-	// Create bid message entity
-	const claimedEventEntity = new AuctionEvent(lot.concat('_').concat(auctionEntity.eventIndex.toString()))
-	claimedEventEntity.type = 'Claimed'
-	claimedEventEntity.index = auctionEntity.eventIndex
-	claimedEventEntity.auction = auctionEntity.id
-	claimedEventEntity.user = user
-	claimedEventEntity.alias = userEntity.muted ? '' : userEntity.alias
-	claimedEventEntity.rune = participantEntity.rune
-	claimedEventEntity.message = userEntity.muted ? '' : event.params._message
-	claimedEventEntity.save()
+	fillEntity.save()
 }
 
-export function handleMessaged(event: MessagedEvent): void {
-	const lot = event.params._lot.toString()
-	const user = event.params._user
+export function handleFillDeadlined(event: FillDeadlinedEvent): void {
+	let fillEntity = getFill(event.params.chainId, event.params.fillId)
 
-	const auctionEntity = Auction.load(lot)!
-	if (auctionEntity == null) return
+	fillEntity.status = 3
 
-	auctionEntity.eventIndex = auctionEntity.eventIndex + 1
-	auctionEntity.save()
-
-	const userEntity = getUserEntity(user)
-	const participantEntity = getAuctionParticipantEntity(lot, user)
-	participantEntity.alias = event.params._alias
-	participantEntity.muted = userEntity.muted
-	participantEntity.save()
-
-	// Stats
-	const message = userEntity.muted ? '' : event.params._message
-	updateStats(BigInt.zero(), false, message)
-
-	// Event
-	const messageEntity = new AuctionEvent(lot.toString().concat('_').concat(auctionEntity.eventIndex.toString()))
-	messageEntity.type = 'Messaged'
-	messageEntity.index = auctionEntity.eventIndex
-	messageEntity.auction = auctionEntity.id
-	messageEntity.user = user
-	messageEntity.alias = userEntity.muted ? '' : userEntity.alias
-	messageEntity.rune = participantEntity.rune
-	messageEntity.message = userEntity.muted ? '' : event.params._message
-	messageEntity.timestamp = event.block.timestamp
-	messageEntity.save()
+	fillEntity.save()
 }

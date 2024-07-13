@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 import "../contracts/AlphaBlue.sol";
+import {BasicERC721} from "../contracts/BasicERC721.sol";
 import {AlphaBlueBase} from "./AlphaBlue.base.t.sol";
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -699,4 +700,56 @@ contract AlphaBlueTest is AlphaBlueBase {
         assertEq(offer.status == OfferStatus.FILLED, true, "Offer filled");
         assertEq(fill.status == FillStatus.SUCCEEDED, true, "Fill succeeded");
     }
+
+function test_fillOffer_NFT() public {
+    BasicERC721 nft = new BasicERC721(
+        "BasicNFT",
+        "BasicNFT",
+        "https://github.com/",
+        "https://github.com/"
+    );
+
+    // Mint NFT to user1
+    vm.prank(owner);
+    nft.safeMint(user1);
+    uint256 tokenId = 1;
+
+    // Approve AlphaBlue to transfer the NFT
+    vm.prank(user1);
+    nft.approve(address(alphaBlueArb), tokenId);
+
+    // Ensure user1 has enough WETH for the deposit and approve it
+    vm.startPrank(user1);
+    WETH.approve(address(alphaBlueArb), nftWethDeposit);
+    vm.stopPrank();
+
+    // Create an offer with the NFT
+    OfferData memory offerParams = _createBaseOfferParams();
+    offerParams.tokenAddress = address(0);
+    offerParams.tokenAmount = 0;
+    offerParams.nftAddress = address(nft);
+    offerParams.nftId = tokenId;
+
+    vm.prank(user1);
+    uint256 offerId = alphaBlueArb.createOffer(offerParams);
+
+    // Create a fill for the offer
+    vm.startPrank(user2);
+    USDC.approve(address(alphaBlueArb), 3000e6);
+    FillParams memory fillParams = _createBaseFillParams(
+        arbChainId,
+        offerId,
+        address(USDC),
+        3000e6,
+        offerParams
+    );
+    alphaBlueArb.createFill(fillParams);
+    vm.stopPrank();
+
+    // Verify the offer was filled
+    OfferData memory offer = alphaBlueArb.getOffer(offerId);
+    assertEq(offer.status == OfferStatus.FILLED, true, "Offer should be filled");
+    assertEq(nft.ownerOf(tokenId), user2, "NFT should be transferred to user2");
+}
+
 }

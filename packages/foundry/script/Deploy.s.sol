@@ -21,6 +21,7 @@ contract DeployScript is ScaffoldETHDeploy {
     uint256 public arbChainId = 421614;
     uint256 public baseChainId = 84532;
     uint256 public celoChainId = 44787;
+    uint256 public polyChainId = 80002;
     AlphaBlue public alphaBlue;
     // AlphaBlue public alphaBlueArb;
     // AlphaBlue public alphaBlueCelo;
@@ -51,32 +52,47 @@ contract DeployScript is ScaffoldETHDeploy {
         );
         _markDeployment("MOCC", address(MOCC));
 
+        // BASE
         alphaBlue = new AlphaBlue(
-            arbChainId,
+            baseChainId,
             address(WETH),
             nftWethDeposit,
             0xD3b06cEbF099CE7DA4AcCf578aaebFDBd6e88a93,
             0xE4aB69C077896252FAFBD49EFD26B5D171A32410
         );
         _markDeployment("alphaBlue", address(alphaBlue));
-        // alphaBlueBase = new AlphaBlue(
-        //     baseChainId,
-        //     address(WETH),
-        //     nftWethDeposit,
-        //     address(0),
-        //     address(0)
-        // );
-        // _markDeployment("alphaBlueBase", address(alphaBlueBase));
-        // alphaBlueCelo = new AlphaBlue(
-        //     celoChainId,
-        //     address(WETH),
-        //     nftWethDeposit,
-        //     address(0),
-        //     address(0)
-        // );
-        // _markDeployment("alphaBlueCelo", address(alphaBlueCelo));
 
-        _setUpAlphaBlueChains();
+        // ARB
+        // alphaBlue = new AlphaBlue(
+        //     arbChainId,
+        //     address(WETH),
+        //     nftWethDeposit,
+        //     0xD3b06cEbF099CE7DA4AcCf578aaebFDBd6e88a93,
+        //     0xE4aB69C077896252FAFBD49EFD26B5D171A32410
+        // );
+        // _markDeployment("alphaBlue", address(alphaBlue));
+
+        // // POLYGON
+        // alphaBlue = new AlphaBlue(
+        //     polyChainId,
+        //     address(WETH),
+        //     nftWethDeposit,
+        //     0x9C32fCB86BF0f4a1A8921a9Fe46de3198bb884B2,
+        //     0x0Fd9e8d3aF1aaee056EB9e802c3A762a667b1904
+        // );
+        // _markDeployment("alphaBlue", address(alphaBlue));
+
+        // CELO
+        alphaBlue = new AlphaBlue(
+            celoChainId,
+            address(WETH),
+            nftWethDeposit,
+            0xb00E95b773528E2Ea724DB06B75113F239D15Dca,
+            0x32E08557B14FaD8908025619797221281D439071
+        );
+        _markDeployment("alphaBlue", address(alphaBlue));
+
+        // _setUpAlphaBlueChains();
 
         console.log("alphaBlue-s initialized");
 
@@ -94,8 +110,6 @@ contract DeployScript is ScaffoldETHDeploy {
         deployments.push(Deployment({name: name, addr: addr}));
         console.log("DEPLOYMENT:", name, addr);
     }
-
-    // function test() public { }
 
     function _setUpAlphaBlueChains() internal {
         address[] memory tokens = new address[](4);
@@ -117,13 +131,13 @@ contract DeployScript is ScaffoldETHDeploy {
             tokens,
             tokensValid
         );
-        // alphaBlueArb.setChainAndTokens(
-        //     baseChainId,
-        //     true,
-        //     address(alphaBlueBase),
-        //     tokens,
-        //     tokensValid
-        // );
+        alphaBlue.setChainAndTokens(
+            baseChainId,
+            true,
+            address(alphaBlue),
+            tokens,
+            tokensValid
+        );
         // alphaBlueArb.setChainAndTokens(
         //     celoChainId,
         //     true,
