@@ -41,11 +41,17 @@ struct OfferData {
     uint256 depositAmount;
 }
 
+enum OfferStatusEnum {
+    OPEN,
+    DEADLINED,
+    CANCELLED,
+    FILLED
+}
 struct OfferStatus {
     uint256 offerId;
     uint256 filledBP;
     uint256 pendingBP;
-    bool deadlined;
+    OfferStatusEnum status;
     OfferFillData[] offerFills;
 }
 struct OfferFillData {
@@ -107,6 +113,7 @@ enum ErrorType {
     UNAVAILABLE__FILL_BP,
     UNAVAILABLE__EXPIRED,
     UNAVAILABLE__DEADLINED,
+    UNAVAILABLE__CANCELLED,
     // Params are invalid
     INVALID__FILL_CHAIN_MISMATCH,
     INVALID__OFFER_CHAIN_MISMATCH,
@@ -144,8 +151,8 @@ error OfferOwnerMismatch();
 error MissingOfferTokenOrNft();
 error MissingFillOptions();
 error InvalidFillId();
-error InvalidFillChain();
-error InvalidFillChainToken();
+error InvalidChain();
+error InvalidChainToken();
 error ZeroAmount();
 error InsufficientAllowanceOrBalance();
 error InvalidApproval();
@@ -163,46 +170,17 @@ error NotPassedDeadline();
 error AlreadyDeadlined();
 error UnsupportedChainId();
 error InsufficientLinkBalance();
+error CannotCancelWithPending();
+error OfferStatusNotOpen();
 
-// LIBRARIES
-
-library QuikMaff {
-    function min(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a < b ? a : b;
-    }
-    function max(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a > b ? a : b;
-    }
-    function scaleByBP(
-        uint256 amount,
-        uint256 bp
-    ) internal pure returns (uint256) {
-        if (bp == 10000) return amount;
-        return (amount * bp) / 10000;
-    }
-}
-
-// MAIN CONTRACT
-
-contract AlphaBlueOfferer is Ownable, CCIPReceiver {
-    using QuikMaff for uint256;
-    using SafeERC20 for IERC20;
-
-    // State Variables
-    uint256 public immutable chainId;
-    IRouterClient public immutable router; // chainlink ccip router
-    IERC20 public immutable linkToken;
-    mapping(uint256 => ChainData) public chainData;
-    mapping(uint256 => mapping(address => bool)) public chainTokens;
-
-    OfferData[] public offers;
-    mapping(uint256 => OfferStatus) public offerStatuses;
-
-    address public weth;
-    uint256 public nftWethDeposit;
-
+interface AlphaBlueEvents {
     // EVENTS
     event OfferCreated(
+        uint256 indexed chainId,
+        address indexed creator,
+        uint256 indexed offerId
+    );
+    event OfferCancelled(
         uint256 indexed chainId,
         address indexed creator,
         uint256 indexed offerId
@@ -232,6 +210,45 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
         address indexed filler,
         uint256 indexed fillId
     );
+}
+
+// LIBRARIES
+
+library QuikMaff {
+    function min(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a < b ? a : b;
+    }
+    function max(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a > b ? a : b;
+    }
+    function scaleByBP(
+        uint256 amount,
+        uint256 bp
+    ) internal pure returns (uint256) {
+        if (bp == 10000) return amount;
+        return (amount * bp) / 10000;
+    }
+}
+
+// MAIN CONTRACT
+
+contract AlphaBlue is Ownable, AlphaBlueEvents {
+    using QuikMaff for uint256;
+    using SafeERC20 for IERC20;
+
+    // State Variables
+    uint256 public immutable chainId;
+    mapping(uint256 => ChainData) public chainData;
+    mapping(uint256 => mapping(address => bool)) public chainTokens;
+    IRouterClient public immutable router; // chainlink ccip router
+    IERC20 public immutable linkToken;
+
+    uint256 public offersCount = 0;
+    mapping(uint256 => OfferData) public offers;
+    mapping(uint256 => OfferStatus) public offerStatuses;
+
+    address public weth;
+    uint256 public nftWethDeposit;
 
     // ADMIN ACTIONS
 
@@ -249,7 +266,42 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
         linkToken = IERC20(_link);
     }
 
-    function setChainsAndTokens() public onlyOwner {}
+    function setChainsAndTokens(
+        uint256[] calldata chainsId,
+        bool[] calldata chainsValid,
+        address[] calldata chainsContract,
+        address[][] calldata tokens,
+        bool[][] calldata tokensValid
+    ) public onlyOwner {
+        uint256 _chainId;
+        for (uint256 i = 0; i < chainsId.length; i++) {
+            _chainId = chainsId[i];
+            chainData[_chainId].valid = chainsValid[i];
+            chainData[_chainId].chainId = _chainId;
+            chainData[_chainId].contractAddress = chainsContract[i];
+
+            for (uint256 j = 0; j < tokens[_chainId].length; j++) {
+                chainTokens[_chainId][tokens[_chainId][j]] = tokensValid[
+                    _chainId
+                ][j];
+            }
+        }
+    }
+    function setChainAndTokens(
+        uint256 _chainId,
+        bool chainsValid,
+        address chainsContract,
+        address[] calldata tokens,
+        bool[] calldata tokensValid
+    ) public onlyOwner {
+        chainData[_chainId].valid = chainsValid;
+        chainData[_chainId].chainId = _chainId;
+        chainData[_chainId].contractAddress = chainsContract;
+
+        for (uint256 i = 0; i < tokens.length; i++) {
+            chainTokens[_chainId][tokens[i]] = tokensValid[i];
+        }
+    }
 
     //
     //
@@ -267,48 +319,60 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
     //
     //
 
+    // VIEW
+
+    function getOffer(
+        uint256 offerId
+    ) public view returns (OfferData memory offer) {
+        offer = offers[offerId];
+    }
+    function getOfferStatus(
+        uint256 offerId
+    ) public view returns (OfferStatus memory offerStatus) {
+        offerStatus = offerStatuses[offerId];
+    }
+
     // USER ACTIONS
 
-    function createOffer(OfferData calldata params) public {
-        // @TEST offer owner mismatch -- revert OfferOwnerMismatch;
-        if (msg.sender != params.owner) revert OfferOwnerMismatch();
-
+    function createOffer(OfferData calldata params) public returns (uint256) {
         // Validate offer
         // @TEST if both token and nft are empty -- revert MissingOfferTokenOrNft();
-        // @TEST if offer token doesn't exist on current chain - revert InvalidFillChainToken();
+        // @TEST if offer token doesn't exist on current chain - revert InvalidChainToken();
         if (
             params.tokenAddress == address(0) && params.nftAddress == address(0)
         ) revert MissingOfferTokenOrNft();
         if (params.tokenAddress != address(0)) {
             if (!chainTokens[chainId][params.tokenAddress])
-                revert InvalidFillChainToken();
+                revert InvalidChainToken();
         } else {
             if (params.nftAddress == address(0)) revert InvalidNFTOrder();
         }
 
         // Validate offer fills
         // @TEST empty fill options -- revert MissingFillOptions;
-        // @TEST fill option chain invalid -- revert InvalidFillChain;
-        // @TEST fill option chain valid, but token invalid -- revert InvalidFillChainToken;
+        // @TEST fill option chain invalid -- revert InvalidChain;
+        // @TEST fill option chain valid, but token invalid -- revert InvalidChainToken;
         // @TEST fill option chain & token valid, but value 0 -- revert ZeroAmount;
         if (params.fillOptions.length == 0) revert MissingFillOptions();
         for (uint256 i = 0; i < params.fillOptions.length; i++) {
             if (!chainData[params.fillOptions[i].chainId].valid)
-                revert InvalidFillChain();
+                revert InvalidChain();
             if (
                 !chainTokens[params.fillOptions[i].chainId][
                     params.fillOptions[i].tokenAddress
                 ]
-            ) revert InvalidFillChainToken();
+            ) revert InvalidChainToken();
             if (params.fillOptions[i].tokenAmount == 0) revert ZeroAmount();
         }
 
         // OFFER DATA
 
-        uint256 offerId = offers.length;
+        uint256 offerId = offersCount;
+        offersCount += 1;
         OfferData storage offer = offers[offerId];
 
         // @TEST ensure that all data is transferred correctly into the offer struct item
+        offer.owner = msg.sender;
         offer.tokenAddress = params.tokenAddress;
         offer.tokenAmount = params.tokenAmount;
         offer.nftAddress = params.nftAddress;
@@ -330,6 +394,7 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
 
         // OFFER STATUS DATA
 
+        offerStatuses[offerId].status = OfferStatusEnum.OPEN;
         offerStatuses[offerId].offerId = offerId;
 
         // TAKE DEPOSIT
@@ -350,13 +415,31 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
         );
 
         emit OfferCreated(chainId, offer.owner, offerId);
+
+        return offerId;
     }
 
     function cancelOffer(uint256 offerId) public {
-        // Validate offer exists
-        // Validate msg.sender = offer owner
-        // Validate auction doesn't have anything pending
+        if (offerId > offersCount) revert InvalidOfferId();
+
+        OfferData storage offer = offers[offerId];
+        OfferStatus storage offerStatus = offerStatuses[offerId];
+
+        if (offer.owner != msg.sender) revert NotOfferer();
+        if (offerStatus.pendingBP > 0) revert CannotCancelWithPending();
+        if (offerStatus.status != OfferStatusEnum.OPEN)
+            revert OfferStatusNotOpen();
+
         // Mark auction state as cancelled
+        offerStatus.status = OfferStatusEnum.CANCELLED;
+
+        // Return deposit
+        IERC20(offer.depositTokenAddress).safeTransfer(
+            offer.owner,
+            offer.depositAmount
+        );
+
+        emit OfferCancelled(chainId, offer.owner, offerId);
     }
 
     function _handleCFILL(
@@ -381,8 +464,7 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
             return ErrorType.INVALID__OFFER_CHAIN_MISMATCH;
 
         // Validate Order exists and matches
-        if (ccipBlue.offerId > offers.length)
-            return ErrorType.INVALID__OFFER_ID;
+        if (ccipBlue.offerId > offersCount) return ErrorType.INVALID__OFFER_ID;
         OfferData storage offer = offers[ccipBlue.offerId];
         if (
             offer.tokenAddress != address(0) &&
@@ -401,8 +483,10 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
         // Validate expiration
         if (offer.expiration < block.timestamp)
             return ErrorType.UNAVAILABLE__EXPIRED;
-        if (offerStatuses[ccipBlue.offerId].deadlined)
+        if (offerStatuses[ccipBlue.offerId].status == OfferStatusEnum.DEADLINED)
             return ErrorType.UNAVAILABLE__DEADLINED;
+        if (offerStatuses[ccipBlue.offerId].status == OfferStatusEnum.CANCELLED)
+            return ErrorType.UNAVAILABLE__CANCELLED;
 
         // Validate partials
         if (
@@ -439,6 +523,7 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
 
         // Add offerFillData to OfferStatus
         uint256 offerFillId = offerStatuses[ccipBlue.offerId].offerFills.length;
+        fillsCount += 1;
         offerStatuses[ccipBlue.offerId].offerFills.push(
             OfferFillData({
                 fillId: ccipBlue.fillId,
@@ -456,8 +541,7 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
         // ====
         // After this point, everything should go through
         // OR the token / nft isn't approved / available
-        // and must be manually retried by bob
-        // @TODO: move this to a new function
+        // and must be manually nudged by bob using `nudgeOffer`
         // ===
 
         offerStatuses[ccipBlue.offerId].pendingBP += ccipBlue.partialBP;
@@ -467,11 +551,11 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
         return ErrorType.NONE;
     }
     function nudgeOffer(uint256 offerId) public {
-        if (offerId >= offers.length) revert InvalidOfferId();
+        if (offerId >= offersCount) revert InvalidOfferId();
         if (offers[offerId].owner != msg.sender) revert NotOfferer();
 
-        // Fill should have succeeded but didn't so can retry
         for (uint256 i = 0; i < offerStatuses[offerId].offerFills.length; i++) {
+            fillsCount += 1;
             _handleOfferFill(offerId, i);
         }
     }
@@ -506,6 +590,15 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
                 offerStatus.pendingBP -= offerFill.partialBP;
                 offerStatus.filledBP += offerFill.partialBP;
 
+                // Iff all BP is filled, mark offer as filled, return deposit to bob
+                if (offerStatus.filledBP == 10000) {
+                    offerStatus.status = OfferStatusEnum.FILLED;
+                    IERC20(offer.depositTokenAddress).safeTransfer(
+                        offer.owner,
+                        offer.depositAmount
+                    );
+                }
+
                 // Transfer tokens to ada
                 IERC20(offer.tokenAddress).safeTransfer(
                     offerFill.adaDestAddress,
@@ -515,7 +608,9 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
                 _sendCCIP(
                     CCIPBlue({
                         messageType: MessageType.CXFILL,
-                        bobDestAddress: offerFill.bobDestAddress,
+                        bobDestAddress: offerFill.bobDestAddress == address(0)
+                            ? offer.owner
+                            : offerFill.bobDestAddress,
                         adaDestAddress: address(0),
                         offerId: offerId,
                         offerChain: chainId,
@@ -540,7 +635,7 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
             // @TODO: send NFT to adaAddress, update state
         }
 
-        emit OfferDeadlined(chainId, offer.owner, offerId);
+        emit OfferFilled(chainId, offer.owner, offerId);
     }
     function _checkAllowanceAndBalance(
         address token,
@@ -557,10 +652,12 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
         OfferData storage offer = offers[ccipBlue.offerId];
         OfferStatus storage offerStatus = offerStatuses[ccipBlue.offerId];
 
-        if (offerStatus.deadlined) revert AlreadyDeadlined();
+        if (offerStatus.status == OfferStatusEnum.DEADLINED)
+            revert AlreadyDeadlined();
 
         OfferFillData storage offerFill = offerStatus.offerFills[0];
         for (uint256 i = 0; i < offerStatus.offerFills.length; i++) {
+            fillsCount += 1;
             if (offerStatus.offerFills[i].fillId != ccipBlue.fillId) continue;
             offerFill = offerStatus.offerFills[i];
         }
@@ -569,7 +666,7 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
             offerFill.adaDestAddress,
             offer.depositAmount
         );
-        offerStatus.deadlined = true;
+        offerStatus.status = OfferStatusEnum.DEADLINED;
 
         emit OfferDeadlined(chainId, offer.owner, ccipBlue.offerId);
     }
@@ -590,12 +687,13 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
     //
     //
 
-    FillData[] public fills;
+    uint256 public fillsCount = 0;
+    mapping(uint256 => FillData) public fills;
 
     function createFill(FillParams calldata params) public {
         // Validate fill token
         if (chainTokens[chainId][params.fillTokenAddress] != true)
-            revert InvalidFillChainToken();
+            revert InvalidChainToken();
 
         // Pull fill token
         if (
@@ -611,21 +709,24 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
         );
 
         // Create fill data
-        uint256 fillId = fills.length;
+        uint256 fillId = fillsCount;
+        fillsCount += 1;
         FillData storage fill = fills[fillId];
 
         fill.offerChain = params.offerChain;
         fill.offerId = params.offerId;
         fill.fillTokenAddress = params.fillTokenAddress;
         fill.fillTokenAmount = params.fillTokenAmount;
-        fill.adaDestAddress = params.adaDestAddress;
+        fill.adaDestAddress = params.adaDestAddress == address(0)
+            ? msg.sender
+            : params.adaDestAddress;
         fill.deadline = block.timestamp + 1 days;
 
         _sendCCIP(
             CCIPBlue({
                 messageType: MessageType.CFILL,
                 bobDestAddress: address(0),
-                adaDestAddress: params.adaDestAddress,
+                adaDestAddress: fill.adaDestAddress,
                 offerChain: params.offerChain,
                 offerId: params.offerId,
                 fillChain: chainId,
@@ -682,7 +783,8 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
     }
 
     function triggerDeadline(uint256 fillId) public {
-        if (fillId >= fills.length) revert InvalidFillId();
+        if (fillId >= fillsCount) revert InvalidFillId();
+        fillsCount += 1;
 
         FillData storage fill = fills[fillId];
         if (fill.owner != msg.sender) revert NotFiller();
