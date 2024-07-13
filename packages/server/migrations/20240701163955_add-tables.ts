@@ -45,28 +45,28 @@ const BNB_LOGO = "https://cryptologos.cc/logos/bnb-bnb-logo.png";
 const tokenMetadata = [
     {
         symbol: "WETH",
-        address: "0x4134b91C1A8e7cb778b89938e1910E5C2e4CDF66",
+        address: "0xc21AdA7aadC14f5eDa420d45F4Ed0355baA124cB",
         decimals: "18",
         logo_url: WETH_LOGO,
         network_id: 84532,
     },
     {
         symbol: "WBTC",
-        address: "0x1Ab43ddF4DD48696C48A34c5359324A24e14cC13",
+        address: "0xB3C45fE991ede6c7860e40Db8551D3CBAEA77F3C",
         decimals: "18",
         logo_url: WBTC_LOGO,
         network_id: 84532,
     },
     {
         symbol: "USDC",
-        address: "0x2474396A9f5c2d068794727EE0A5D2e0eC46A613",
+        address: "0xd17Bd01dfF6A3a12abBd2EE83f2eC6159c262049",
         decimals: "6",
         logo_url: USDC_LOGO,
         network_id: 84532,
     },
     {
         symbol: "BNB",
-        address: "0x046381E3750f367540d046075C4dB392D3F48569",
+        address: "0xb70f83a724c74d853B4DCf338860Ae3319D40AFD",
         decimals: "8",
         logo_url: BNB_LOGO,
         network_id: 84532,
