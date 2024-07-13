@@ -37,12 +37,15 @@ abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
     address payable public user4 = payable(address(103));
     address payable[4] public users;
 
-    uint256 public arbChainId = 1;
-    uint256 public baseChainId = 2;
-    uint256 public celoChainId = 3;
+    uint256 public arbChainId = 421614;
+    uint256 public baseChainId = 84532;
+    uint256 public celoChainId = 44787;
     AlphaBlue public alphaBlueArb;
     AlphaBlue public alphaBlueBase;
     AlphaBlue public alphaBlueCelo;
+
+    uint64 public mockChainSelector;
+    IRouterClient public router;
 
     // SETUP
 
@@ -81,8 +84,8 @@ abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
         ccipLocalSimulator = new CCIPLocalSimulator();
 
         (
-            ,// uint64 chainSelector_
-            IRouterClient router,
+            uint64 chainSelector_,
+            IRouterClient sourceRouter,
             ,// IRouterClient destinationRouter_
             ,// WETH9 wrappedNative_
             LinkToken linkToken,
@@ -90,6 +93,8 @@ abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
             // BurnMintERC677Helper ccipLnM_
         ) = ccipLocalSimulator.configuration();
 
+        mockChainSelector = chainSelector_;
+        router = sourceRouter;
 
         alphaBlueArb = new AlphaBlue(arbChainId, address(WETH), nftWethDeposit, address(router), address(linkToken));
         alphaBlueBase = new AlphaBlue(

@@ -842,6 +842,7 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
     //
 
     function _sendCCIP(CCIPBlue memory ccipBlue) internal {
+        console.log("Starting _sendCCIP");
         // Same chain message
         if (ccipBlue.offerChain == ccipBlue.fillChain) {
             Client.Any2EVMMessage memory sameChainMessage = Client.Any2EVMMessage({
@@ -851,7 +852,10 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
                 data: abi.encode(ccipBlue),
                 destTokenAmounts: new Client.EVMTokenAmount[](0) // Sending no tokens directly
             });
-
+            // Infinite loop here:
+            // _ccipReceive likely calls _handleCFILL
+            // _handleCFILL might encounter an error and call _sendCCIP again
+            // _sendCCIP sees it's a same-chain message and calls _ccipReceive again
             _ccipReceive(sameChainMessage);
             return;
         } 
@@ -864,7 +868,7 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
             data: payload,
             tokenAmounts: new Client.EVMTokenAmount[](0), // Sending no tokens directly
             feeToken: address(linkToken),
-            extraArgs: Client._argsToBytes(Client.EVMExtraArgsV1({gasLimit: 200000}))
+            extraArgs: Client._argsToBytes(Client.EVMExtraArgsV1({gasLimit: 900000}))
         });
 
 
@@ -875,7 +879,7 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
         router.ccipSend(destinationChainSelector, xcMessage);
         
         // emit event
-        
+       console.log("Ending _sendCCIP"); 
     }
 
     function _ccipReceive(Client.Any2EVMMessage memory any2EvmMessage) internal override {
@@ -900,6 +904,7 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
 
         if (_chainId == 5) return 16015286601757825753;  // Ethereum Sepolia
         if (_chainId == 84532) return 10344971235874465080; // Base Sepolia
+        if (_chainId == 44787) return 3552045678561919002; // Celo Alfajores
         if (_chainId == 80002) return 16281711391670634445;  // Polygon Amoy
         if (_chainId == 43113) return 14767482510784806043;  // Avalanche Fuji
         if (_chainId == 421614) return 3478487238524512106;  // Arbitrum Sepolia

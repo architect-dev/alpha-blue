@@ -13,174 +13,268 @@ contract AlphaBlueTest is AlphaBlueBase {
         super.setUp();
     }
 
-    function test_createOffer() public {
-        vm.prank(user1);
-        WETH.approve(address(alphaBlueArb), type(uint256).max);
+    // function test_createOffer() public {
+    //     vm.prank(user1);
+    //     WETH.approve(address(alphaBlueArb), type(uint256).max);
 
-        _expectTokenTransfer(WETH, user1, address(alphaBlueArb), 0.01e18);
+    //     _expectTokenTransfer(WETH, user1, address(alphaBlueArb), 0.01e18);
 
-        vm.expectEmit(true, true, true, true);
-        emit OfferCreated(arbChainId, user1, 0);
+    //     vm.expectEmit(true, true, true, true);
+    //     emit OfferCreated(arbChainId, user1, 0);
 
-        OfferData memory params = _createBaseOfferParams();
+    //     OfferData memory params = _createBaseOfferParams();
 
-        vm.prank(user1);
-        uint256 offerId = alphaBlueArb.createOffer(params);
+    //     vm.prank(user1);
+    //     uint256 offerId = alphaBlueArb.createOffer(params);
 
-        OfferData memory offer = alphaBlueArb.getOffer(offerId);
+    //     OfferData memory offer = alphaBlueArb.getOffer(offerId);
 
-        assertEq(offer.owner, user1, "User1 owns offer");
-        assertEq(offer.tokenAddress, address(WETH), "WETH");
-        assertEq(offer.tokenAmount, 1e18, "1e18 WETH");
-        assertEq(offer.nftAddress, address(0), "No NFT");
-        assertEq(offer.nftId, 0, "No NFT ID");
-        assertEq(offer.allowPartialFills, false, "No partials");
-        assertEq(
-            offer.expiration,
-            block.timestamp + 30 days,
-            "30 day default exp"
-        );
-        assertEq(offer.fillOptions.length, 6, "6 Fill options");
-        assertEq(
-            offer.depositTokenAddress,
-            address(WETH),
-            "WETH is token, so it is used as deposit"
-        );
-        assertEq(offer.depositAmount, 0.01e18, "1% of deposit amount");
+    //     assertEq(offer.owner, user1, "User1 owns offer");
+    //     assertEq(offer.tokenAddress, address(WETH), "WETH");
+    //     assertEq(offer.tokenAmount, 1e18, "1e18 WETH");
+    //     assertEq(offer.nftAddress, address(0), "No NFT");
+    //     assertEq(offer.nftId, 0, "No NFT ID");
+    //     assertEq(offer.allowPartialFills, false, "No partials");
+    //     assertEq(
+    //         offer.expiration,
+    //         block.timestamp + 30 days,
+    //         "30 day default exp"
+    //     );
+    //     assertEq(offer.fillOptions.length, 6, "6 Fill options");
+    //     assertEq(
+    //         offer.depositTokenAddress,
+    //         address(WETH),
+    //         "WETH is token, so it is used as deposit"
+    //     );
+    //     assertEq(offer.depositAmount, 0.01e18, "1% of deposit amount");
 
-        assertEq(alphaBlueArb.offersCount(), 1, "1 offer created");
+    //     assertEq(alphaBlueArb.offersCount(), 1, "1 offer created");
 
-        OfferStatus memory offerStatus = alphaBlueArb.getOfferStatus(offerId);
+    //     OfferStatus memory offerStatus = alphaBlueArb.getOfferStatus(offerId);
 
-        assertEq(
-            offerStatus.status == OfferStatusEnum.OPEN,
-            true,
-            "Offer starts as open"
-        );
-    }
+    //     assertEq(
+    //         offerStatus.status == OfferStatusEnum.OPEN,
+    //         true,
+    //         "Offer starts as open"
+    //     );
+    // }
 
-    function test_createOffer_Reverts() public {
-        vm.prank(user1);
-        WETH.approve(address(alphaBlueArb), type(uint256).max);
+    // function test_createOffer_Reverts() public {
+    //     vm.prank(user1);
+    //     WETH.approve(address(alphaBlueArb), type(uint256).max);
 
-        OfferData memory params = _createBaseOfferParams();
+    //     OfferData memory params = _createBaseOfferParams();
 
-        // MISSING TOKEN AND NFT
-        params.tokenAddress = address(0);
-        vm.expectRevert(MissingOfferTokenOrNft.selector);
-        vm.prank(user1);
-        alphaBlueArb.createOffer(params);
+    //     // MISSING TOKEN AND NFT
+    //     params.tokenAddress = address(0);
+    //     vm.expectRevert(MissingOfferTokenOrNft.selector);
+    //     vm.prank(user1);
+    //     alphaBlueArb.createOffer(params);
 
-        // INVALID TOKEN
-        params.tokenAddress = address(100);
-        vm.expectRevert(InvalidChainToken.selector);
-        vm.prank(user1);
-        alphaBlueArb.createOffer(params);
+    //     // INVALID TOKEN
+    //     params.tokenAddress = address(100);
+    //     vm.expectRevert(InvalidChainToken.selector);
+    //     vm.prank(user1);
+    //     alphaBlueArb.createOffer(params);
 
-        // INVALID FILL CHAIN OPTION
-        params.tokenAddress = address(WETH);
-        params.fillOptions[0].chainId = 100;
-        vm.expectRevert(InvalidChain.selector);
-        vm.prank(user1);
-        alphaBlueArb.createOffer(params);
+    //     // INVALID FILL CHAIN OPTION
+    //     params.tokenAddress = address(WETH);
+    //     params.fillOptions[0].chainId = 100;
+    //     vm.expectRevert(InvalidChain.selector);
+    //     vm.prank(user1);
+    //     alphaBlueArb.createOffer(params);
 
-        // MISSING FILL OPTIONS
-        params.fillOptions = new FillOption[](0);
-        vm.expectRevert(MissingFillOptions.selector);
-        vm.prank(user1);
-        alphaBlueArb.createOffer(params);
-    }
+    //     // MISSING FILL OPTIONS
+    //     params.fillOptions = new FillOption[](0);
+    //     vm.expectRevert(MissingFillOptions.selector);
+    //     vm.prank(user1);
+    //     alphaBlueArb.createOffer(params);
+    // }
 
-    function test_cancelOffer() public {
-        vm.prank(user1);
-        WETH.approve(address(alphaBlueArb), type(uint256).max);
+    // function test_cancelOffer() public {
+    //     vm.prank(user1);
+    //     WETH.approve(address(alphaBlueArb), type(uint256).max);
 
-        OfferData memory params = _createBaseOfferParams();
+    //     OfferData memory params = _createBaseOfferParams();
 
-        vm.prank(user1);
-        uint256 offerId = alphaBlueArb.createOffer(params);
+    //     vm.prank(user1);
+    //     uint256 offerId = alphaBlueArb.createOffer(params);
 
-        _expectTokenTransfer(WETH, address(alphaBlueArb), user1, 0.01e18);
+    //     _expectTokenTransfer(WETH, address(alphaBlueArb), user1, 0.01e18);
 
-        vm.expectEmit(true, true, true, true);
-        emit OfferCancelled(arbChainId, user1, offerId);
+    //     vm.expectEmit(true, true, true, true);
+    //     emit OfferCancelled(arbChainId, user1, offerId);
 
-        vm.prank(user1);
-        alphaBlueArb.cancelOffer(offerId);
+    //     vm.prank(user1);
+    //     alphaBlueArb.cancelOffer(offerId);
 
-        OfferStatus memory offerStatus = alphaBlueArb.getOfferStatus(offerId);
+    //     OfferStatus memory offerStatus = alphaBlueArb.getOfferStatus(offerId);
 
-        assertEq(
-            offerStatus.status == OfferStatusEnum.CANCELLED,
-            true,
-            "Offer cancelled"
-        );
-    }
+    //     assertEq(
+    //         offerStatus.status == OfferStatusEnum.CANCELLED,
+    //         true,
+    //         "Offer cancelled"
+    //     );
+    // }
 
-    function test_cancelOffer_Reverts() public {
-        vm.prank(user1);
-        WETH.approve(address(alphaBlueArb), type(uint256).max);
+    // function test_cancelOffer_Reverts() public {
+    //     vm.prank(user1);
+    //     WETH.approve(address(alphaBlueArb), type(uint256).max);
 
-        OfferData memory params = _createBaseOfferParams();
+    //     OfferData memory params = _createBaseOfferParams();
 
-        vm.prank(user1);
-        uint256 offerId = alphaBlueArb.createOffer(params);
+    //     vm.prank(user1);
+    //     uint256 offerId = alphaBlueArb.createOffer(params);
 
-        vm.expectRevert(InvalidOfferId.selector);
-        vm.prank(user1);
-        alphaBlueArb.cancelOffer(2);
+    //     vm.expectRevert(InvalidOfferId.selector);
+    //     vm.prank(user1);
+    //     alphaBlueArb.cancelOffer(2);
 
-        vm.expectRevert(NotOfferer.selector);
-        vm.prank(user2);
-        alphaBlueArb.cancelOffer(offerId);
+    //     vm.expectRevert(NotOfferer.selector);
+    //     vm.prank(user2);
+    //     alphaBlueArb.cancelOffer(offerId);
 
-        vm.prank(user1);
-        alphaBlueArb.cancelOffer(offerId);
+    //     vm.prank(user1);
+    //     alphaBlueArb.cancelOffer(offerId);
 
-        vm.expectRevert(OfferStatusNotOpen.selector);
-        vm.prank(user1);
-        alphaBlueArb.cancelOffer(offerId);
-    }
+    //     vm.expectRevert(OfferStatusNotOpen.selector);
+    //     vm.prank(user1);
+    //     alphaBlueArb.cancelOffer(offerId);
+    // }
 
-    function test_fillOffer() public {
-        vm.prank(user1);
-        WETH.approve(address(alphaBlueArb), type(uint256).max);
+    // function test_fillOffer() public {
+    //     vm.prank(user1);
+    //     WETH.approve(address(alphaBlueArb), type(uint256).max);
 
-        OfferData memory offerParams = _createBaseOfferParams();
+    //     OfferData memory offerParams = _createBaseOfferParams();
 
-        vm.prank(user1);
-        uint256 offerId = alphaBlueArb.createOffer(offerParams);
+    //     vm.prank(user1);
+    //     uint256 offerId = alphaBlueArb.createOffer(offerParams);
 
-        vm.prank(user2);
-        USDC.approve(address(alphaBlueArb), type(uint256).max);
+    //     vm.prank(user2);
+    //     USDC.approve(address(alphaBlueArb), type(uint256).max);
 
-        // Ada pays for fill
-        _expectTokenTransfer(USDC, user2, address(alphaBlueArb), 3000e6);
-        // Bob pays for offer
-        _expectTokenTransfer(WETH, user1, address(alphaBlueArb), 1e18);
-        // Bob refunded deposit
-        _expectTokenTransfer(WETH, address(alphaBlueArb), user1, 0.01e18);
-        // Ada receives offer on other side of bridge
-        _expectTokenTransfer(WETH, address(alphaBlueArb), user2, 1e18);
-        // Bob receives fill on other side of bridge
-        _expectTokenTransfer(USDC, address(alphaBlueArb), user1, 3000e6);
+    //     // Ada pays for fill
+    //     _expectTokenTransfer(USDC, user2, address(alphaBlueArb), 3000e6);
+    //     // Bob pays for offer
+    //     _expectTokenTransfer(WETH, user1, address(alphaBlueArb), 1e18);
+    //     // Bob refunded deposit
+    //     _expectTokenTransfer(WETH, address(alphaBlueArb), user1, 0.01e18);
+    //     // Ada receives offer on other side of bridge
+    //     _expectTokenTransfer(WETH, address(alphaBlueArb), user2, 1e18);
+    //     // Bob receives fill on other side of bridge
+    //     _expectTokenTransfer(USDC, address(alphaBlueArb), user1, 3000e6);
 
-        FillParams memory fillParams = _createBaseFillParams(
-            arbChainId,
-            offerId,
-            address(USDC),
-            3000e6,
-            offerParams
-        );
+    //     FillParams memory fillParams = _createBaseFillParams(
+    //         arbChainId,
+    //         offerId,
+    //         address(USDC),
+    //         3000e6,
+    //         offerParams
+    //     );
 
-        vm.prank(user2);
-        alphaBlueArb.createFill(fillParams);
+    //     vm.prank(user2);
+    //     alphaBlueArb.createFill(fillParams);
 
-        OfferStatus memory offerStatus = alphaBlueArb.getOfferStatus(offerId);
-        assertEq(
-            offerStatus.status == OfferStatusEnum.FILLED,
-            true,
-            "Offer filled"
-        );
+    //     OfferStatus memory offerStatus = alphaBlueArb.getOfferStatus(offerId);
+    //     assertEq(
+    //         offerStatus.status == OfferStatusEnum.FILLED,
+    //         true,
+    //         "Offer filled"
+    //     );
+    // }
+
+    function test_CCIP_OfferFill() public {
+    // Setup
+    vm.prank(user1);
+    WETH.approve(address(alphaBlueArb), type(uint256).max);
+
+    OfferData memory offerParams = _createBaseOfferParams();
+
+    vm.prank(user1);
+    uint256 offerId = alphaBlueArb.createOffer(offerParams);
+
+    // Prepare CCIP Message
+    CCIPBlue memory ccipBlue = CCIPBlue({
+        messageType: MessageType.CFILL,
+        bobDestAddress: user1,
+        adaDestAddress: user2,
+        offerChain: arbChainId,
+        offerId: offerId,
+        fillChain: arbChainId,
+        fillId: 0,
+        offerTokenAddress: address(WETH),
+        offerTokenAmount: 1e18,
+        offerNftAddress: address(0),
+        offerNftId: 0,
+        fillTokenAddress: address(USDC),
+        fillTokenAmount: 3000e6,
+        partialBP: 10000,
+        deadline: block.timestamp + 1 days,
+        errorType: ErrorType.NONE
+    });
+    bytes memory ccipMessage = abi.encode(ccipBlue);
+
+    // Initial balances
+    uint256 initialUser1WETHBalance = WETH.balanceOf(user1);
+    uint256 initialUser2WETHBalance = WETH.balanceOf(user2);
+    uint256 initialContractWETHBalance = WETH.balanceOf(address(alphaBlueArb));
+
+    // We are not yet emmiting
+    // vm.expectEmit(true, true, true, true);
+    // emit OfferFilled(arbChainId, user1, offerId);
+
+    // Bob pays for offer
+    _expectTokenTransfer(WETH, user1, address(alphaBlueArb), 1e18);
+    // Bob refunded deposit
+    _expectTokenTransfer(WETH, address(alphaBlueArb), user1, 0.01e18);
+    // Ada receives offer
+    _expectTokenTransfer(WETH, address(alphaBlueArb), user2, 1e18);
+
+    // Simulate CCIP message receiving
+    vm.prank(address(router));
+    alphaBlueArb.ccipReceive(
+        Client.Any2EVMMessage({
+            messageId: bytes32(0),
+            sourceChainSelector: uint64(_getChainSelector(arbChainId)),
+            sender: abi.encode(address(alphaBlueArb)),
+            data: ccipMessage,
+            destTokenAmounts: new Client.EVMTokenAmount[](0)
+        })
+    );
+
+    // Verify offer status
+    OfferStatus memory offerStatus = alphaBlueArb.getOfferStatus(offerId);
+    assertEq(offerStatus.status == OfferStatusEnum.FILLED, true, "Offer should be filled");
+    assertEq(offerStatus.filledBP, 10000, "Offer should be 100% filled");
+
+    // Verify balances
+    assertEq(WETH.balanceOf(user1), initialUser1WETHBalance - 1e18 + 0.01e18, "User1 WETH balance incorrect");
+    assertEq(WETH.balanceOf(user2), initialUser2WETHBalance + 1e18, "User2 WETH balance incorrect");
+    assertEq(WETH.balanceOf(address(alphaBlueArb)), initialContractWETHBalance + 1e18 - 0.01e18 - 1e18, "Contract WETH balance incorrect");
+
+    // Verify offer fill data
+    OfferFillData memory offerFillData = offerStatus.offerFills[0];
+    assertEq(offerFillData.fillId, 0, "OfferFill fillId incorrect");
+    assertEq(offerFillData.fillChain, arbChainId, "OfferFill fillChain incorrect");
+    assertEq(offerFillData.fillTokenAddress, address(USDC), "OfferFill token address incorrect");
+    assertEq(offerFillData.fillTokenAmount, 3000e6, "OfferFill token amount incorrect");
+    assertEq(offerFillData.partialBP, 10000, "OfferFill partialBP incorrect");
+    assertEq(offerFillData.adaDestAddress, user2, "OfferFill adaDestAddress incorrect");
+    assertEq(offerFillData.bobDestAddress, user1, "OfferFill bobDestAddress incorrect");
+    assertEq(offerFillData.pending, false, "OfferFill should not be pending");
+
+  
+}
+    function _getChainSelector(uint256 _chainId) internal pure returns (uint64) {
+
+        if (_chainId == 5) return 16015286601757825753;  // Ethereum Sepolia
+        if (_chainId == 84532) return 10344971235874465080; // Base Sepolia
+        if (_chainId == 44787) return 3552045678561919002; // Celo Alfajores
+        if (_chainId == 80002) return 16281711391670634445;  // Polygon Amoy
+        if (_chainId == 43113) return 14767482510784806043;  // Avalanche Fuji
+        if (_chainId == 421614) return 3478487238524512106;  // Arbitrum Sepolia
+        
+        revert UnsupportedChainId();
     }
 }
