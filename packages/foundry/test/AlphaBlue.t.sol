@@ -659,4 +659,131 @@ contract AlphaBlueTest is AlphaBlueBase {
             );
         }
     }
+
+    function test_CCIP_OfferFill() public {
+        // Setup
+        vm.prank(user1);
+        WETH.approve(address(alphaBlueArb), type(uint256).max);
+
+        OfferData memory offerParams = _createBaseOfferParams();
+
+        vm.prank(user1);
+        uint256 offerId = alphaBlueArb.createOffer(offerParams);
+
+        // Prepare CCIP Message
+        CCIPBlue memory ccipBlue = CCIPBlue({
+            messageType: MessageType.CFILL,
+            bobDestAddress: user1,
+            adaDestAddress: user2,
+            offerChain: arbChainId,
+            offerId: offerId,
+            fillChain: arbChainId,
+            fillId: 0,
+            offerTokenAddress: address(WETH),
+            offerTokenAmount: 1e18,
+            offerNftAddress: address(0),
+            offerNftId: 0,
+            fillTokenAddress: address(USDC),
+            fillTokenAmount: 3000e6,
+            partialBP: 10000,
+            deadline: block.timestamp + 1 days,
+            errorType: ErrorType.NONE
+        });
+        bytes memory ccipMessage = abi.encode(ccipBlue);
+
+        // Initial balances
+        uint256 initialUser1WETHBalance = WETH.balanceOf(user1);
+        uint256 initialUser2WETHBalance = WETH.balanceOf(user2);
+        uint256 initialContractWETHBalance = WETH.balanceOf(
+            address(alphaBlueArb)
+        );
+
+        // We are not yet emmiting
+        // vm.expectEmit(true, true, true, true);
+        // emit OfferFilled(arbChainId, user1, offerId);
+
+        // Bob pays for offer
+        _expectTokenTransfer(WETH, user1, address(alphaBlueArb), 1e18);
+        // Bob refunded deposit
+        _expectTokenTransfer(WETH, address(alphaBlueArb), user1, 0.01e18);
+        // Ada receives offer
+        _expectTokenTransfer(WETH, address(alphaBlueArb), user2, 1e18);
+
+        // Simulate CCIP message receiving
+        vm.prank(address(router));
+        alphaBlueArb.ccipReceive(
+            Client.Any2EVMMessage({
+                messageId: bytes32(0),
+                sourceChainSelector: uint64(_getChainSelector(arbChainId)),
+                sender: abi.encode(address(alphaBlueArb)),
+                data: ccipMessage,
+                destTokenAmounts: new Client.EVMTokenAmount[](0)
+            })
+        );
+
+        // Verify offer status
+        OfferStatus memory offerStatus = alphaBlueArb.getOfferStatus(offerId);
+        assertEq(
+            offerStatus.status == OfferStatusEnum.FILLED,
+            true,
+            "Offer should be filled"
+        );
+        assertEq(offerStatus.filledBP, 10000, "Offer should be 100% filled");
+
+        // Verify balances
+        assertEq(
+            WETH.balanceOf(user1),
+            initialUser1WETHBalance - 1e18 + 0.01e18,
+            "User1 WETH balance incorrect"
+        );
+        assertEq(
+            WETH.balanceOf(user2),
+            initialUser2WETHBalance + 1e18,
+            "User2 WETH balance incorrect"
+        );
+        assertEq(
+            WETH.balanceOf(address(alphaBlueArb)),
+            initialContractWETHBalance + 1e18 - 0.01e18 - 1e18,
+            "Contract WETH balance incorrect"
+        );
+
+        // Verify offer fill data
+        OfferFillData memory offerFillData = offerStatus.offerFills[0];
+        assertEq(offerFillData.fillId, 0, "OfferFill fillId incorrect");
+        assertEq(
+            offerFillData.fillChain,
+            arbChainId,
+            "OfferFill fillChain incorrect"
+        );
+        assertEq(
+            offerFillData.fillTokenAddress,
+            address(USDC),
+            "OfferFill token address incorrect"
+        );
+        assertEq(
+            offerFillData.fillTokenAmount,
+            3000e6,
+            "OfferFill token amount incorrect"
+        );
+        assertEq(
+            offerFillData.partialBP,
+            10000,
+            "OfferFill partialBP incorrect"
+        );
+        assertEq(
+            offerFillData.adaDestAddress,
+            user2,
+            "OfferFill adaDestAddress incorrect"
+        );
+        assertEq(
+            offerFillData.bobDestAddress,
+            user1,
+            "OfferFill bobDestAddress incorrect"
+        );
+        assertEq(
+            offerFillData.pending,
+            false,
+            "OfferFill should not be pending"
+        );
+    }
 }

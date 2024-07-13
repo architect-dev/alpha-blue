@@ -3,9 +3,12 @@ pragma solidity ^0.8.20;
 
 // @TODO: Remove
 import "forge-std/console.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./AlphaBlueEvents.sol";
+import {IRouterClient} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IRouterClient.sol"; // Allows us to send CCIP messages
+import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
+import {CCIPReceiver} from "@chainlink/contracts-ccip/src/v0.8/ccip/applications/CCIPReceiver.sol"; // Allows us to receive CCIP messages
 
 // STRUCTS / EVENTS / ERRORS
 
@@ -180,6 +183,8 @@ error NotPassedDeadline();
 error AlreadyDeadlined();
 error CannotCancelWithPending();
 error OfferStatusNotOpen();
+error UnsupportedChainId();
+error InsufficientLinkBalance();
 
 // LIBRARIES
 
@@ -201,7 +206,7 @@ library QuikMaff {
 
 // MAIN CONTRACT
 
-contract AlphaBlue is Ownable, AlphaBlueEvents {
+contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
     using QuikMaff for uint256;
     using SafeERC20 for IERC20;
 
@@ -216,16 +221,23 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
     address public weth;
     uint256 public nftWethDeposit;
 
+    IRouterClient public immutable router; // chainlink ccip router
+    IERC20 public immutable linkToken;
+
     // ADMIN ACTIONS
 
     constructor(
         uint256 _chainId,
         address _weth,
-        uint256 _nftWethDeposit
+        uint256 _nftWethDeposit,
+        address _router,
+        address _link
     ) Ownable(msg.sender) {
         chainId = _chainId;
         weth = _weth;
         nftWethDeposit = _nftWethDeposit;
+        router = IRouterClient(_router);
+        linkToken = IERC20(_link);
     }
 
     function setChainsAndTokens(
@@ -793,24 +805,83 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
     //
 
     function _sendCCIP(CCIPBlue memory ccipBlue) internal {
-        // Same chain swap
+        console.log("Starting _sendCCIP");
+        // Same chain message
         if (ccipBlue.offerChain == ccipBlue.fillChain) {
-            receiveCCIP(ccipBlue);
+            Client.Any2EVMMessage memory sameChainMessage = Client
+                .Any2EVMMessage({
+                    messageId: bytes32(0), // No messageId
+                    sourceChainSelector: uint64(
+                        _getChainSelector(ccipBlue.offerChain)
+                    ),
+                    sender: abi.encode(address(this)),
+                    data: abi.encode(ccipBlue),
+                    destTokenAmounts: new Client.EVMTokenAmount[](0) // Sending no tokens directly
+                });
+            // Infinite loop here:
+            // _ccipReceive likely calls _handleCFILL
+            // _handleCFILL might encounter an error and call _sendCCIP again
+            // _sendCCIP sees it's a same-chain message and calls _ccipReceive again
+            _ccipReceive(sameChainMessage);
+            return;
         }
+        // Cross chain message
+        bytes memory payload = abi.encode(ccipBlue);
+        uint64 destinationChainSelector = _getChainSelector(
+            ccipBlue.offerChain
+        );
 
-        // Multi chain swap, mocking with simple contract call
-        // @TODO
+        Client.EVM2AnyMessage memory xcMessage = Client.EVM2AnyMessage({
+            receiver: abi.encode(address(this)), // This assumes the contract address is the same on all chains, would require an omnichain deployment via CREATE2
+            data: payload,
+            tokenAmounts: new Client.EVMTokenAmount[](0), // Sending no tokens directly
+            feeToken: address(linkToken),
+            extraArgs: Client._argsToBytes(
+                Client.EVMExtraArgsV1({gasLimit: 900000})
+            )
+        });
+
+        uint256 fee = router.getFee(destinationChainSelector, xcMessage);
+        if (linkToken.balanceOf(address(this)) < fee)
+            revert InsufficientLinkBalance();
+        linkToken.approve(address(router), fee);
+
+        router.ccipSend(destinationChainSelector, xcMessage);
+
+        // emit event
+        console.log("Ending _sendCCIP");
     }
 
-    function receiveCCIP(CCIPBlue memory ccipBlue) public {
+    function _ccipReceive(
+        Client.Any2EVMMessage memory any2EvmMessage
+    ) internal override {
+        CCIPBlue memory ccipBlue = abi.decode(any2EvmMessage.data, (CCIPBlue));
+
         if (ccipBlue.messageType == MessageType.CFILL) {
-            _handleCFILL(chainId, ccipBlue);
-        } else if (ccipBlue.messageType == MessageType.CXFILL) {
-            _handleCXFILL(chainId, ccipBlue);
-        } else if (ccipBlue.messageType == MessageType.CINVALID) {
-            _handleCINVALID(chainId, ccipBlue);
-        } else if (ccipBlue.messageType == MessageType.CDEADLINE) {
-            _handleCDEADLINE(chainId, ccipBlue);
+            _handleCFILL(any2EvmMessage.sourceChainSelector, ccipBlue);
         }
+        if (ccipBlue.messageType == MessageType.CXFILL) {
+            _handleCXFILL(any2EvmMessage.sourceChainSelector, ccipBlue);
+        }
+        if (ccipBlue.messageType == MessageType.CINVALID) {
+            _handleCINVALID(any2EvmMessage.sourceChainSelector, ccipBlue);
+        }
+        if (ccipBlue.messageType == MessageType.CDEADLINE) {
+            _handleCDEADLINE(any2EvmMessage.sourceChainSelector, ccipBlue);
+        }
+    }
+
+    /// @dev values from https://docs.chain.link/ccip/supported-networks/v1_2_0/testnet#overview
+    function _getChainSelector(
+        uint256 _chainId
+    ) internal pure returns (uint64) {
+        if (_chainId == 5) return 16015286601757825753; // Ethereum Sepolia
+        if (_chainId == 84532) return 10344971235874465080; // Base Sepolia
+        if (_chainId == 44787) return 3552045678561919002; // Celo Alfajores
+        if (_chainId == 80002) return 16281711391670634445; // Polygon Amoy
+        if (_chainId == 43113) return 14767482510784806043; // Avalanche Fuji
+        if (_chainId == 421614) return 3478487238524512106; // Arbitrum Sepolia
+
+        revert UnsupportedChainId();
     }
 }
