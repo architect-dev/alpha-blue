@@ -46,6 +46,7 @@ struct OfferData {
     uint256 nftId;
     // settings
     bool allowPartialFills;
+    uint256 created;
     uint256 expiration;
     FillOption[] fillOptions;
     // Deposit
@@ -238,27 +239,6 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
         linkToken = IERC20(_link);
     }
 
-    function setChainsAndTokens(
-        uint256[] calldata chainsId,
-        bool[] calldata chainsValid,
-        address[] calldata chainsContract,
-        address[][] calldata tokens,
-        bool[][] calldata tokensValid
-    ) public onlyOwner {
-        uint256 _chainId;
-        for (uint256 i = 0; i < chainsId.length; i++) {
-            _chainId = chainsId[i];
-            chainData[_chainId].valid = chainsValid[i];
-            chainData[_chainId].chainId = _chainId;
-            chainData[_chainId].contractAddress = chainsContract[i];
-
-            for (uint256 j = 0; j < tokens[_chainId].length; j++) {
-                chainTokens[_chainId][tokens[_chainId][j]] = tokensValid[
-                    _chainId
-                ][j];
-            }
-        }
-    }
     function setChainAndTokens(
         uint256 _chainId,
         bool chainsValid,

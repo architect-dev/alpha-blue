@@ -121,7 +121,7 @@ function main() {
 	fs.writeFileSync(
 		`${SERVER_DIR}deployedContracts.ts`,
 		prettier.format(
-			`${generatedContractComment} import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract"; \n\n
+			`${generatedContractComment} import { GenericContractsDeclaration } from "./contract"; \n\n
  const deployedContracts = {${fileContent}} as const; \n\n export default deployedContracts satisfies GenericContractsDeclaration`,
 			{
 				parser: 'typescript',

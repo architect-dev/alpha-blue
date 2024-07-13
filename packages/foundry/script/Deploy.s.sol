@@ -14,7 +14,7 @@ contract DeployScript is ScaffoldETHDeploy {
     BasicERC20 public WBTC;
     BasicERC20 public USDC;
     BasicERC20 public BNB;
-    BasicERC721 public mockNFT1;
+    BasicERC721 public MOCC;
 
     uint256 public nftWethDeposit = 0.01e18;
 
@@ -42,6 +42,14 @@ contract DeployScript is ScaffoldETHDeploy {
         _markDeployment("USDC", address(USDC));
         BNB = new BasicERC20("BNB", "BNB", 18);
         _markDeployment("BNB", address(BNB));
+
+        MOCC = new BasicERC721(
+            "MOCC",
+            "MOCC",
+            "https://tokenBaseURI",
+            "https://contractURI"
+        );
+        _markDeployment("MOCC", address(MOCC));
 
         alphaBlue = new AlphaBlue(
             arbChainId,
