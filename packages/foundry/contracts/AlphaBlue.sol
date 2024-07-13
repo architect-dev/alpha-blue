@@ -12,7 +12,11 @@ import {CCIPReceiver} from "@chainlink/contracts-ccip/src/v0.8/ccip/applications
 
 // STRUCTS / EVENTS / ERRORS
 
-// TODO: Send CMESSAGE to claim stake of pending tx that has passed the deadline, this will cancel the remainder of the offer if there are no other pendingBP
+struct ChainData {
+    bool valid;
+    uint256 chainId;
+    address contractAddress;
+}
 
 struct FillOption {
     uint256 chainId;
@@ -33,12 +37,15 @@ struct OfferData {
     bool allowPartialFills;
     uint256 expiration;
     FillOption[] fillOptions;
+    address depositTokenAddress;
+    uint256 depositAmount;
 }
 
 struct OfferStatus {
     uint256 offerId;
     uint256 filledBP;
     uint256 pendingBP;
+    bool deadlined;
     OfferFillData[] offerFills;
 }
 struct OfferFillData {
@@ -54,18 +61,21 @@ struct OfferFillData {
 }
 
 enum FillStatus {
-    CREATED,
+    PENDING,
     INVALID,
-    UNAVAILABLE,
-    COMPLETED
+    SUCCEEDED,
+    DEADLINED
 }
 struct FillData {
+    address owner;
     uint256 offerChain;
     uint256 offerId;
     address fillTokenAddress;
     uint256 fillTokenAmount;
     uint256 deadline;
     address adaDestAddress;
+    FillStatus status;
+    ErrorType errorType;
 }
 struct FillParams {
     uint256 offerChain;
@@ -84,11 +94,11 @@ struct FillParams {
 // 0 = CFILL - Fill has been called, tell offer that fill is available, distribute offerToken / offerNft
 // 1 = CXFILL - Offer has agreed to fill, tell fill that it can distribute fillToken
 // 2 = CINVALID - data sent with fill doesn't match order
-// 3 = CUNAVAILABLE - offer no longer available
 enum MessageType {
     CFILL,
     CXFILL,
-    CINVALID
+    CINVALID,
+    CDEADLINE
 }
 enum ErrorType {
     // No error
@@ -96,6 +106,7 @@ enum ErrorType {
     // Params are good, but option no longer available
     UNAVAILABLE__FILL_BP,
     UNAVAILABLE__EXPIRED,
+    UNAVAILABLE__DEADLINED,
     // Params are invalid
     INVALID__FILL_CHAIN_MISMATCH,
     INVALID__OFFER_CHAIN_MISMATCH,
@@ -132,6 +143,7 @@ struct CCIPBlue {
 error OfferOwnerMismatch();
 error MissingOfferTokenOrNft();
 error MissingFillOptions();
+error InvalidFillId();
 error InvalidFillChain();
 error InvalidFillChainToken();
 error ZeroAmount();
@@ -145,6 +157,10 @@ error InvalidPartialFill();
 error FillUnavailable();
 error InvalidNFTOrder();
 error NotOfferer();
+error AlreadyXFilled();
+error NotFiller();
+error NotPassedDeadline();
+error AlreadyDeadlined();
 
 // LIBRARIES
 
@@ -174,12 +190,14 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
     uint256 public immutable chainId;
     IRouterClient public immutable router; // chainlink ccip router
     IERC20 public immutable linkToken;
-    mapping(uint256 => bool) public availableChains;
-    mapping(uint256 => mapping(address => bool)) public availableChainTokens;
-    // TODO: Set available chains function
+    mapping(uint256 => ChainData) public chainData;
+    mapping(uint256 => mapping(address => bool)) public chainTokens;
 
     OfferData[] public offers;
-    mapping(uint256 => OfferStatus) public offerStatuses; // offerid -> offerStatus mapping
+    mapping(uint256 => OfferStatus) public offerStatuses;
+
+    address public weth;
+    uint256 public nftWethDeposit;
 
     // EVENTS
     event OfferCreated(
@@ -187,11 +205,44 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
         address indexed creator,
         uint256 indexed offerId
     );
+    event OfferDeadlined(
+        uint256 indexed chainId,
+        address indexed creator,
+        uint256 indexed offerId
+    );
+    event OfferFilled(
+        uint256 indexed chainId,
+        address indexed creator,
+        uint256 indexed offerId
+    );
+    event FillFailed(
+        uint256 indexed chainId,
+        address indexed filler,
+        uint256 indexed fillId
+    );
+    event FillXFilled(
+        uint256 indexed chainId,
+        address indexed filler,
+        uint256 indexed fillId
+    );
+    event FillDeadlined(
+        uint256 indexed chainId,
+        address indexed filler,
+        uint256 indexed fillId
+    );
 
     // ADMIN ACTIONS
 
-    constructor(uint256 _chainId, address _router, address _link) Ownable(msg.sender) CCIPReceiver(_router) {
+    constructor(
+        uint256 _chainId,
+        address _weth,
+        uint256 _nftWethDeposit,
+        address _router,
+        address _link
+    ) Ownable(msg.sender) CCIPReceiver(_router) {
         chainId = _chainId;
+        weth = _weth;
+        nftWethDeposit = _nftWethDeposit;
         router = IRouterClient(_router);
         linkToken = IERC20(_link);
     }
@@ -227,7 +278,7 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
             params.tokenAddress == address(0) && params.nftAddress == address(0)
         ) revert MissingOfferTokenOrNft();
         if (params.tokenAddress != address(0)) {
-            if (availableChainTokens[chainId][params.tokenAddress] != true)
+            if (!chainTokens[chainId][params.tokenAddress])
                 revert InvalidFillChainToken();
         } else {
             if (params.nftAddress == address(0)) revert InvalidNFTOrder();
@@ -240,39 +291,14 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
         // @TEST fill option chain & token valid, but value 0 -- revert ZeroAmount;
         if (params.fillOptions.length == 0) revert MissingFillOptions();
         for (uint256 i = 0; i < params.fillOptions.length; i++) {
-            if (availableChains[params.fillOptions[i].chainId] != true)
+            if (!chainData[params.fillOptions[i].chainId].valid)
                 revert InvalidFillChain();
             if (
-                availableChainTokens[params.fillOptions[i].chainId][
+                !chainTokens[params.fillOptions[i].chainId][
                     params.fillOptions[i].tokenAddress
-                ] != true
+                ]
             ) revert InvalidFillChainToken();
             if (params.fillOptions[i].tokenAmount == 0) revert ZeroAmount();
-        }
-
-        // Take initial stake for deposit
-        // @TODO: If offer is token offer (params.tokenAddress != address(0)) then take a 1% deposit
-        // 	validate approval
-        //  use ERC20.safeTransferFrom to transfer the tokens to this contract
-
-        if (params.tokenAddress != address(0)) {
-            uint256 stakeAmount = params.tokenAmount.scaleByBP(100); // 1%
-
-            // Check allowance
-            if (
-                !_checkAllowanceAndBalance(
-                    params.tokenAddress,
-                    stakeAmount,
-                    msg.sender,
-                    address(this)
-                )
-            ) revert InsufficientAllowanceOrBalance();
-
-            IERC20(params.tokenAddress).safeTransferFrom(
-                msg.sender,
-                address(this),
-                stakeAmount
-            );
         }
 
         // OFFER DATA
@@ -289,12 +315,37 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
         offer.allowPartialFills = params.allowPartialFills;
         offer.expiration = params.expiration;
 
+        offer.depositTokenAddress = params.tokenAddress != address(0)
+            ? params.tokenAddress
+            : weth;
+        offer.depositAmount = params.tokenAddress != address(0)
+            ? params.tokenAmount.scaleByBP(100)
+            : nftWethDeposit;
+
         for (uint256 i = 0; i < params.fillOptions.length; i++) {
             offer.fillOptions.push(params.fillOptions[i]);
         }
 
         // OFFER STATUS DATA
+
         offerStatuses[offerId].offerId = offerId;
+
+        // TAKE DEPOSIT
+
+        if (
+            !_checkAllowanceAndBalance(
+                offer.depositTokenAddress,
+                offer.depositAmount,
+                msg.sender,
+                address(this)
+            )
+        ) revert InsufficientAllowanceOrBalance();
+
+        IERC20(offer.depositTokenAddress).safeTransferFrom(
+            msg.sender,
+            address(this),
+            offer.depositAmount
+        );
 
         emit OfferCreated(chainId, offer.owner, offerId);
     }
@@ -348,6 +399,8 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
         // Validate expiration
         if (offer.expiration < block.timestamp)
             return ErrorType.UNAVAILABLE__EXPIRED;
+        if (offerStatuses[ccipBlue.offerId].deadlined)
+            return ErrorType.UNAVAILABLE__DEADLINED;
 
         // Validate partials
         if (
@@ -431,7 +484,6 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
 
         // If offer is TOKEN
         if (offer.tokenAddress != address(0)) {
-            // If allowance and balance checks pass, pull from wallet, mark fill as succeeded, send CXFILL, add filledBP
             if (
                 _checkAllowanceAndBalance(
                     offer.tokenAddress,
@@ -458,7 +510,6 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
                     offerTokenPartialAmount
                 );
 
-                // @TODO: send CXFILL to allow bob to withdraw on ada's chain
                 _sendCCIP(
                     CCIPBlue({
                         messageType: MessageType.CXFILL,
@@ -486,6 +537,8 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
         if (offer.nftAddress != address(0)) {
             // @TODO: send NFT to adaAddress, update state
         }
+
+        emit OfferDeadlined(chainId, offer.owner, offerId);
     }
     function _checkAllowanceAndBalance(
         address token,
@@ -497,8 +550,26 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
             IERC20(token).allowance(from, to) >= amount &&
             IERC20(token).balanceOf(from) >= amount;
     }
-    function _sendCXFILL() internal {
-        // @TODO
+
+    function _handleCDEADLINE(uint256, CCIPBlue memory ccipBlue) internal {
+        OfferData storage offer = offers[ccipBlue.offerId];
+        OfferStatus storage offerStatus = offerStatuses[ccipBlue.offerId];
+
+        if (offerStatus.deadlined) revert AlreadyDeadlined();
+
+        OfferFillData storage offerFill = offerStatus.offerFills[0];
+        for (uint256 i = 0; i < offerStatus.offerFills.length; i++) {
+            if (offerStatus.offerFills[i].fillId != ccipBlue.fillId) continue;
+            offerFill = offerStatus.offerFills[i];
+        }
+
+        IERC20(offer.depositTokenAddress).safeTransfer(
+            offerFill.adaDestAddress,
+            offer.depositAmount
+        );
+        offerStatus.deadlined = true;
+
+        emit OfferDeadlined(chainId, offer.owner, ccipBlue.offerId);
     }
 
     //
@@ -521,7 +592,7 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
 
     function createFill(FillParams calldata params) public {
         // Validate fill token
-        if (availableChainTokens[chainId][params.fillTokenAddress] != true)
+        if (chainTokens[chainId][params.fillTokenAddress] != true)
             revert InvalidFillChainToken();
 
         // Pull fill token
@@ -568,27 +639,86 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
                 errorType: ErrorType.NONE
             })
         );
+    }
+    function _handleCXFILL(
+        uint256 offerChainId,
+        CCIPBlue memory ccipBlue
+    ) internal {
+        if (offerChainId != ccipBlue.offerChain) revert ChainMismatch();
 
-        // Send CFILL
-    }
-    function resendCFILL() public {
-        // Fill id exists
-        // Fill id owner is msg.sender
+        FillData storage fill = fills[ccipBlue.fillId];
+        if (fill.status != FillStatus.PENDING) revert AlreadyXFilled();
 
-        // Resend CFILL
-        _sendCFILL();
+        IERC20(fill.fillTokenAddress).safeTransfer(
+            ccipBlue.bobDestAddress,
+            fill.fillTokenAmount
+        );
+
+        fill.status = FillStatus.SUCCEEDED;
+
+        emit FillXFilled(chainId, fill.owner, ccipBlue.fillId);
     }
-    function _sendCFILL() internal {
-        // Encode and send CFILL
+    function _handleCINVALID(
+        uint256 offerChainId,
+        CCIPBlue memory ccipBlue
+    ) internal {
+        if (offerChainId != ccipBlue.offerChain) revert ChainMismatch();
+
+        FillData storage fill = fills[ccipBlue.fillId];
+        if (fill.status != FillStatus.PENDING) revert AlreadyXFilled();
+
+        // Return the funds to the filler
+        IERC20(fill.fillTokenAddress).safeTransfer(
+            fill.owner,
+            fill.fillTokenAmount
+        );
+
+        fill.status = FillStatus.INVALID;
+        fill.errorType = ccipBlue.errorType;
+
+        emit FillFailed(chainId, fill.owner, ccipBlue.fillId);
     }
-    function _handleCXFILL(uint256 offerChainId, CCIPBlue memory ccipBlue) internal {
-        // _handleCXFILL
-    }
-    function _handleCINVALID(uint256 offerChainId, CCIPBlue memory ccipBlue) internal {
-        // _handleCINVALID
-    }
-    function _handleCUNAVAILABLE() internal {
-        // _handleCUNAVAILABLE
+
+    function triggerDeadline(uint256 fillId) public {
+        if (fillId >= fills.length) revert InvalidFillId();
+
+        FillData storage fill = fills[fillId];
+        if (fill.owner != msg.sender) revert NotFiller();
+
+        if (fill.status != FillStatus.PENDING) revert AlreadyXFilled();
+
+        if (block.timestamp < fill.deadline) revert NotPassedDeadline();
+
+        // Return the funds to the filler
+        IERC20(fill.fillTokenAddress).safeTransfer(
+            fill.owner,
+            fill.fillTokenAmount
+        );
+
+        fill.status = FillStatus.DEADLINED;
+
+        _sendCCIP(
+            CCIPBlue({
+                messageType: MessageType.CDEADLINE,
+                bobDestAddress: address(0),
+                adaDestAddress: fill.adaDestAddress,
+                offerId: fill.offerId,
+                offerChain: fill.offerChain,
+                fillId: fillId,
+                fillChain: chainId,
+                offerTokenAddress: address(0),
+                offerTokenAmount: 0,
+                offerNftAddress: address(0),
+                offerNftId: 0,
+                fillTokenAddress: address(0),
+                fillTokenAmount: 0,
+                partialBP: 0,
+                deadline: 0,
+                errorType: ErrorType.NONE
+            })
+        );
+
+        emit FillDeadlined(chainId, fill.owner, fillId);
     }
 
     //
@@ -618,20 +748,31 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
     }
 
     function _ccipReceive(Client.Any2EVMMessage memory any2EvmMessage) internal override {
-        // Decode CCIP using CCPIBlue struct
-        // Using message type, branch to functions
         CCIPBlue memory ccipBlue = abi.decode(any2EvmMessage.data, (CCIPBlue));
 
-        // 0 = CFILL - Fill has been called, tell offer that fill is available, distribute offerToken / offerNft
-        // 1 = CXFILL - Offer has agreed to fill, tell fill that it can distribute fillToken
-        // 2 = CINVALID - data sent with fill doesn't match order
-        // 3 = CUNAVAILABLE - offer no longer available
+        // if (ccipBlue.messageType == MessageType.CFILL) {
+        //     _handleCFILL(chainId, ccipBlue);
+        // }
+        // if (ccipBlue.messageType == MessageType.CXFILL) {
+        //     _handleCXFILL(chainId, ccipBlue);
+        // }
+        // if (ccipBlue.messageType == MessageType.CINVALID) {
+        //     _handleCINVALID(chainId, ccipBlue);
+        // }
+        // if (ccipBlue.messageType == MessageType.CDEADLINE) {
+        //     _handleCDEADLINE(chainId, ccipBlue);
+
         if (ccipBlue.messageType == MessageType.CFILL) {
             _handleCFILL(any2EvmMessage.sourceChainSelector, ccipBlue);
-        } else if (ccipBlue.messageType == MessageType.CXFILL) {
+        }
+        if (ccipBlue.messageType == MessageType.CXFILL) {
             _handleCXFILL(any2EvmMessage.sourceChainSelector, ccipBlue);
-        } else (ccipBlue.messageType == MessageType.CINVALID) {
+        }
+        if (ccipBlue.messageType == MessageType.CINVALID) {
             _handleCINVALID(any2EvmMessage.sourceChainSelector, ccipBlue);
+        }
+        if (ccipBlue.messageType == MessageType.CDEADLINE) {
+            _handleCDEADLINE(any2EvmMessage.sourceChainSelector, ccipBlue);
         }
     }
 }
