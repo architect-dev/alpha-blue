@@ -83,9 +83,6 @@ function main() {
 		const transactionsCreate = broadCastObject.transactions.filter((transaction) => transaction.transactionType == 'CREATE')
 		transactionsCreate.forEach((transaction) => {
 			const artifact = getArtifactOfContract(transaction.contractName)
-			console.log({
-				deployments: deployments[chain],
-			})
 			allGeneratedContracts[chain][deployments[chain][transaction.contractAddress] || transaction.contractName] = {
 				address: transaction.contractAddress,
 				abi: artifact.abi,
