@@ -835,7 +835,7 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
         );
 
         Client.EVM2AnyMessage memory xcMessage = Client.EVM2AnyMessage({
-            receiver: abi.encode(address(this)), // This assumes the contract address is the same on all chains, would require an omnichain deployment via CREATE2
+            receiver: _getCCIPEncodedReceiver(ccipBlue),
             data: payload,
             tokenAmounts: new Client.EVMTokenAmount[](0), // Sending no tokens directly
             feeToken: address(linkToken),
@@ -855,6 +855,21 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
         console.log("Ending _sendCCIP");
     }
 
+    function _getCCIPEncodedReceiver(
+        CCIPBlue memory ccipBlue
+    ) internal pure returns (bytes memory) {
+        if (ccipBlue.messageType == MessageType.CFILL) {
+            return abi.encode(ccipBlue.offerChain);
+        } else if (ccipBlue.messageType == MessageType.CXFILL) {
+            return abi.encode(ccipBlue.fillChain);
+        } else if (ccipBlue.messageType == MessageType.CINVALID) {
+            return abi.encode(ccipBlue.fillChain);
+        } else if (ccipBlue.messageType == MessageType.CDEADLINE) {
+            return abi.encode(ccipBlue.offerChain);
+        }
+        return abi.encode(address(0));
+    }
+
     function _ccipReceive(
         Client.Any2EVMMessage memory any2EvmMessage
     ) internal override {
@@ -871,20 +886,17 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
                 _getReverseChainSelector(any2EvmMessage.sourceChainSelector),
                 ccipBlue
             );
-        }
-        if (ccipBlue.messageType == MessageType.CXFILL) {
+        } else if (ccipBlue.messageType == MessageType.CXFILL) {
             _handleCXFILL(
                 _getReverseChainSelector(any2EvmMessage.sourceChainSelector),
                 ccipBlue
             );
-        }
-        if (ccipBlue.messageType == MessageType.CINVALID) {
+        } else if (ccipBlue.messageType == MessageType.CINVALID) {
             _handleCINVALID(
                 _getReverseChainSelector(any2EvmMessage.sourceChainSelector),
                 ccipBlue
             );
-        }
-        if (ccipBlue.messageType == MessageType.CDEADLINE) {
+        } else if (ccipBlue.messageType == MessageType.CDEADLINE) {
             _handleCDEADLINE(
                 _getReverseChainSelector(any2EvmMessage.sourceChainSelector),
                 ccipBlue
