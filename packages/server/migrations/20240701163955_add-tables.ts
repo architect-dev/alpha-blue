@@ -107,8 +107,12 @@ export async function up(knex: Knex) {
         table.string("order_id", 100).notNullable();
         table.string("order_wallet_address", 100).notNullable();
         table.boolean("allow_partial_fill").notNullable();
+        table.string("deposit_token_address", 100).nullable();
+        table.string("depsoite_amount", 100).nullable();
         table.string("fill_ccip_message_id", 100).nullable();
         table.string("xfill_ccip_message_id", 100).nullable();
+        table.string("nft_address", 100).nullable();
+        table.string("nft_id", 100).nullable();
         table.integer("order_date").notNullable();
         table.integer("filled_date").nullable();
 
@@ -120,7 +124,7 @@ export async function up(knex: Knex) {
             createForeignKeyRow: true,
         });
 
-        table.string("token_amount", 100).notNullable();
+        table.string("token_amount", 100).nullable();
         table.integer("expiration_date").notNullable();
         table.integer("order_status").notNullable();
 

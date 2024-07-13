@@ -6,7 +6,10 @@ import {
     newPotentialFillToPotentialFillDbModel,
     potentialFillDbModelToPotentialFill,
 } from "src/core/mappers/order-fill-mappers";
-import { PotentialFillDbModel } from "src/core/models/db-models";
+import {
+    BlockchainNetworkDbModel,
+    PotentialFillDbModel,
+} from "src/core/models/db-models";
 import { NewPotentialFill, PotentialFill } from "src/core/models/domain-models";
 
 const potentialFillTable = "potential_fill";
@@ -94,4 +97,20 @@ export async function insertPotentialFill(
         .into(potentialFillTable);
 
     return await getPotentialFill(insertedPkId[0]);
+}
+
+export async function cancelPotentialFills(
+    orderPkId: number
+): Promise<PotentialFill[]> {
+    const databaseConnection = DatabaseManager.getInstance();
+
+    await databaseConnection
+        .select<BlockchainNetworkDbModel>()
+        .from(potentialFillTable)
+        .where("order_pk_id", orderPkId)
+        .update({
+            active: false,
+        });
+
+    return await getPotentialFills({ orderPkId });
 }

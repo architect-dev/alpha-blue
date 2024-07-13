@@ -3,12 +3,20 @@ import { updateBlockchainLastReadEventBlock } from "src/core/db/repositories/blo
 import {
     BaseEventModel,
     EventModel,
+    FillFailedEvent,
+    OfferCancelledEvent,
+    OfferDeadlinedEvent,
     OrderCreatedEvent,
     OrderFilledEvent,
 } from "src/core/models/chain-event-models";
 import { BlockchainNetwork } from "src/core/models/domain-models";
 import { ContractWrapper } from "src/core/services/contract-service";
-import { createOrder, fillOrder } from "src/core/services/order-service";
+import {
+    createOrder,
+    fillOrder,
+    updateFillStatus,
+    updateOffer,
+} from "src/core/services/order-service";
 
 const OfferCreated_EVENT_NAME = "OfferCreated";
 const OfferFilled_EVENT_NAME = "OfferFilled";
@@ -150,10 +158,11 @@ export async function getEventLogs(
 
     let firstBlock: number;
 
-    if (blockchain.lastReadEventsBlock < 1) {
-        firstBlock = endBlock - 500;
-    } else if (endBlock - blockchain.lastReadEventsBlock > 500) {
-        firstBlock = endBlock - 500;
+    if (
+        blockchain.lastReadEventsBlock == 0 ||
+        endBlock - blockchain.lastReadEventsBlock > 2000
+    ) {
+        firstBlock = endBlock - 2000;
     } else {
         firstBlock = blockchain.lastReadEventsBlock + 1;
     }
@@ -187,6 +196,29 @@ export async function processEventModel(eventModel: BaseEventModel) {
         case "OfferFilled": {
             const event: OrderFilledEvent = eventModel as OrderFilledEvent;
             await fillOrder(event);
+
+            break;
+        }
+
+        case "FillFailed": {
+            const event: FillFailedEvent = eventModel as FillFailedEvent;
+            await updateFillStatus(event);
+
+            break;
+        }
+
+        case "OfferCancelled": {
+            const event: OfferCancelledEvent =
+                eventModel as OfferCancelledEvent;
+            await updateOffer(event);
+
+            break;
+        }
+
+        case "OfferDeadlined": {
+            const event: OfferDeadlinedEvent =
+                eventModel as OfferDeadlinedEvent;
+            await updateOffer(event);
 
             break;
         }

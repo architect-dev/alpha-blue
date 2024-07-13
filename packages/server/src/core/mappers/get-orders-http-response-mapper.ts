@@ -11,13 +11,12 @@ export function toGetOrdersHttpResponse(order: Order): GetOrderHttpResponse {
         return {
             amount: tokenAmount,
             token: tokenMetadata.address,
-            decimals: tokenMetadata.decimals,
             chain: tokenMetadata.blockchainNetwork.name,
             tokenDetails: {
                 logoUrl: tokenMetadata.logoUrl,
                 symbol: tokenMetadata.symbol,
                 address: tokenMetadata.address,
-                decimals: order.tokenMetadata.decimals,
+                decimals: tokenMetadata.decimals,
                 blockChainId: tokenMetadata.blockchainNetwork.id,
             },
         };

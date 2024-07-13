@@ -31,10 +31,61 @@ export class OrderCreatedEvent extends BaseEventModel {
 }
 
 export class OrderFilledEvent extends BaseEventModel {
-    fillId: string;
+    fillId: number;
 
     constructor(event: EventModel, blockchain: BlockchainNetwork) {
         super(event, blockchain);
-        this.fillId = event.parsedArgs?.fillId ?? "";
+        this.fillId = event.parsedArgs?.fillId ?? 0;
+    }
+}
+
+export class FillDeadlinedEvent extends BaseEventModel {
+    fillId: number;
+    filler: string;
+
+    constructor(event: EventModel, blockchain: BlockchainNetwork) {
+        super(event, blockchain);
+        this.fillId = event.parsedArgs?.fillId ?? 0;
+        this.filler = event.parsedArgs?.filler ?? "";
+    }
+}
+
+export class FillFailedEvent extends BaseEventModel {
+    fillId: number;
+    filler: string;
+
+    constructor(event: EventModel, blockchain: BlockchainNetwork) {
+        super(event, blockchain);
+        this.fillId = event.parsedArgs?.fillId ?? 0;
+        this.filler = event.parsedArgs?.filler ?? "";
+    }
+}
+
+export class FillXFilledEvent extends BaseEventModel {
+    fillId: number;
+    filler: string;
+
+    constructor(event: EventModel, blockchain: BlockchainNetwork) {
+        super(event, blockchain);
+        this.fillId = event.parsedArgs?.fillId ?? 0;
+        this.filler = event.parsedArgs?.filler ?? "";
+    }
+}
+
+export class OfferCancelledEvent extends BaseEventModel {
+    creatorWalletAddress: string;
+
+    constructor(event: EventModel, blockchain: BlockchainNetwork) {
+        super(event, blockchain);
+        this.creatorWalletAddress = event.parsedArgs?.creator ?? "";
+    }
+}
+
+export class OfferDeadlinedEvent extends BaseEventModel {
+    creatorWalletAddress: string;
+
+    constructor(event: EventModel, blockchain: BlockchainNetwork) {
+        super(event, blockchain);
+        this.creatorWalletAddress = event.parsedArgs?.creator ?? "";
     }
 }

@@ -66,7 +66,11 @@ export async function getOfferFromContract(
         await contract.contract.getOffer(orderId)
     ).offer;
 
-    const formattedOrderId = formatContractId(sourceBlockchain.name, orderId);
+    const formattedOrderId = formatContractId(
+        sourceBlockchain.name,
+        "order",
+        orderId
+    );
 
     const sourceTokenMetadata = await getTokenMetadata({
         networkId: sourceBlockchain.id,
@@ -105,7 +109,7 @@ export async function getOfferFromContract(
         orderDate: currentSeconds(),
         blockchainNetwork: sourceBlockchain,
         tokenMetadata: sourceTokenMetadata,
-        tokenAmount: contractOffer.tokenAmount.toString(),
+        tokenAmount: contractOffer.tokenAmount?.toString() || "-",
         expirationDate: contractOffer.expiration,
     };
 
@@ -114,7 +118,7 @@ export async function getOfferFromContract(
 
 export async function getFillFromContract(
     fillBlockchain: BlockchainNetwork,
-    fillId: string
+    fillId: number
 ): Promise<NewFillHistory> {
     const contract = new ContractWrapper(
         fillBlockchain.id,
@@ -130,14 +134,16 @@ export async function getFillFromContract(
 
     const formattedOrderId = formatContractId(
         fillBlockchain.name,
+        "fill",
         contractFill.offerId
     );
 
     const order = await getOrder({ orderId: formattedOrderId });
+    const formatFillId = formatContractId(fillBlockchain.name, "fill", fillId);
 
     const newOrder: NewFillHistory = {
         orderPkId: order.pkId,
-        fillId,
+        fillId: formatFillId,
         fillWalletAddress: contractFill.owner,
         blockchainNetwork: fillBlockchain,
         tokenMetadata: fillTokenMetadata,
