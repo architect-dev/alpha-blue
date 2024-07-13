@@ -1,8 +1,6 @@
 import { Knex } from "knex";
 
 export function createdAtUpdatedAtRows(t: Knex.CreateTableBuilder, knex: Knex) {
-    const env = knex.userParams.env;
-
     const rawDefault = "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP";
 
     t.timestamp("created_at").defaultTo(knex.fn.now());

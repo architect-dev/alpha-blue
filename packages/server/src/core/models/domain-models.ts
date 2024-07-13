@@ -20,6 +20,7 @@ export type BlockchainNetwork = {
     name: string;
     blockExplorerUrl: string;
     rpcUrl: string;
+    chainImageUrl: string;
     lastReadEventsBlock: number;
 
     updatedAt: number;
