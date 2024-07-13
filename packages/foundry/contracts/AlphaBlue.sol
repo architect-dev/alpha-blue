@@ -835,9 +835,11 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
         );
 
         Client.EVM2AnyMessage memory xcMessage = Client.EVM2AnyMessage({
-            receiver: _getCCIPEncodedReceiver(ccipBlue),
+            receiver: abi.encode(
+                chainData[_getCCIPReceiver(ccipBlue)].contractAddress
+            ),
             data: payload,
-            tokenAmounts: new Client.EVMTokenAmount[](0), // Sending no tokens directly
+            tokenAmounts: new Client.EVMTokenAmount[](0),
             feeToken: address(linkToken),
             extraArgs: Client._argsToBytes(
                 Client.EVMExtraArgsV1({gasLimit: 900000})
@@ -845,6 +847,7 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
         });
 
         uint256 fee = router.getFee(destinationChainSelector, xcMessage);
+        fee = 0.1e18;
         if (linkToken.balanceOf(address(this)) < fee)
             revert InsufficientLinkBalance();
         linkToken.approve(address(router), fee);
@@ -855,19 +858,19 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
         console.log("Ending _sendCCIP");
     }
 
-    function _getCCIPEncodedReceiver(
+    function _getCCIPReceiver(
         CCIPBlue memory ccipBlue
-    ) internal pure returns (bytes memory) {
+    ) internal pure returns (uint256) {
         if (ccipBlue.messageType == MessageType.CFILL) {
-            return abi.encode(ccipBlue.offerChain);
+            return ccipBlue.offerChain;
         } else if (ccipBlue.messageType == MessageType.CXFILL) {
-            return abi.encode(ccipBlue.fillChain);
+            return ccipBlue.fillChain;
         } else if (ccipBlue.messageType == MessageType.CINVALID) {
-            return abi.encode(ccipBlue.fillChain);
+            return ccipBlue.fillChain;
         } else if (ccipBlue.messageType == MessageType.CDEADLINE) {
-            return abi.encode(ccipBlue.offerChain);
+            return ccipBlue.offerChain;
         }
-        return abi.encode(address(0));
+        return 0;
     }
 
     function _ccipReceive(
@@ -893,6 +896,7 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
                 ccipBlue
             );
         } else if (ccipBlue.messageType == MessageType.CINVALID) {
+            console.log("INVALID", uint256(ccipBlue.errorType));
             _handleCINVALID(
                 _getReverseChainSelector(any2EvmMessage.sourceChainSelector),
                 ccipBlue
