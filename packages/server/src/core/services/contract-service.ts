@@ -55,25 +55,26 @@ export class ContractWrapper {
 
 export async function getOfferFromContract(
     sourceBlockchain: BlockchainNetwork,
-    orderId: string
+    orderId: number
 ): Promise<NewOrder> {
     const contract = new ContractWrapper(
         sourceBlockchain.id,
         sourceBlockchain.rpcUrl
     );
-    const contractOffer: ContractOffer = await contract.contract.getOffer(
-        orderId
-    );
+    const contractOffer: ContractOffer = (
+        await contract.contract.getOffer(orderId)
+    ).offer;
+
     const formattedOrderId = formatContractId(sourceBlockchain.name, orderId);
 
     const sourceTokenMetadata = await getTokenMetadata({
         networkId: sourceBlockchain.id,
-        tokenAddress: contractOffer.offer.depositTokenAddress,
+        tokenAddress: contractOffer.depositTokenAddress,
     });
 
     const potentialFills: NewPotentialFill[] = [];
 
-    for (const fillOption of contractOffer.offer.fillOptions) {
+    for (const fillOption of contractOffer.fillOptions) {
         const destinationBlockchainNetwork = await getBlockchainNetwork(
             fillOption.chainId
         );
@@ -118,8 +119,8 @@ export async function getFillFromContract(
         fillBlockchain.id,
         fillBlockchain.rpcUrl
     );
-    const contractFill: ContractFill = (await contract.contract.getFill(fillId)
-        .fill) as ContractFill;
+    const contractFill: ContractFill = (await contract.contract.getFill(fillId))
+        .fill as ContractFill;
 
     const fillTokenMetadata = await getTokenMetadata({
         networkId: fillBlockchain.id,

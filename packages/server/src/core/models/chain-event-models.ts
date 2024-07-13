@@ -13,14 +13,14 @@ export class BaseEventModel {
     contractAddress: string;
     blockchain: BlockchainNetwork;
     blockNumber: number;
-    orderId: string;
+    orderId: number;
 
     constructor(event: EventModel, blockchain: BlockchainNetwork) {
         this.contractEventName = event.eventName ?? "";
         this.contractAddress = event.address;
         this.blockchain = blockchain;
         this.blockNumber = event.blockNumber ?? 0;
-        this.orderId = event.parsedArgs?.orderId ?? "";
+        this.orderId = event.parsedArgs?.orderId ?? 0;
     }
 }
 
