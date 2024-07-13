@@ -75,6 +75,8 @@ function main() {
 		deployments[chain] = deploymentObject
 	})
 
+	const TARGET_DIR = '../nextjs/contracts/'
+
 	const allGeneratedContracts = {}
 
 	chains.forEach((chain) => {
@@ -91,7 +93,6 @@ function main() {
 		})
 	})
 
-	const TARGET_DIR = '../nextjs/contracts/'
 	const SERVER_DIR = '../server/src/core/contracts/'
 
 	const fileContent = Object.entries(allGeneratedContracts).reduce((content, [chainId, chainConfig]) => {
