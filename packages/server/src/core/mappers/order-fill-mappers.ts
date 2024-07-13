@@ -59,7 +59,7 @@ export function fillHistoryDbModelToFillHistory(
         tokenMetadata: tokenMetadata,
         tokenAmount: fillHistoryDbModel.token_amount,
         fillStatus: fillHistoryDbModel.fill_status,
-        transactionId: fillHistoryDbModel.transaction_id,
+        expirationDate: fillHistoryDbModel.expiration_date,
         updatedAt: dateStringToEpochSeconds(fillHistoryDbModel.updated_at),
         createdAt: dateStringToEpochSeconds(fillHistoryDbModel.created_at),
     };
@@ -75,7 +75,7 @@ export function newFillHistoryToFillHistoryDbModel(
         token_pk_id: newFillHistory.tokenMetadata.pkId,
         token_amount: newFillHistory.tokenAmount,
         fill_status: newFillHistory.fillStatus,
-        transaction_id: newFillHistory.transactionId,
         fill_wallet_address: newFillHistory.fillWalletAddress,
+        expiration_date: newFillHistory.expirationDate,
     };
 }

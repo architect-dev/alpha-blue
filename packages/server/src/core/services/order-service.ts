@@ -1,4 +1,8 @@
 import {
+    fetchFillHistory,
+    insertNewFill,
+} from "src/core/db/repositories/fill-history-repository";
+import {
     fetchOrder,
     insertNewOrder,
 } from "src/core/db/repositories/order-repository";
@@ -6,7 +10,10 @@ import {
     OrderCreatedEvent,
     OrderFilledEvent,
 } from "src/core/models/chain-event-models";
-import { getOfferFromContract } from "src/core/services/contract-service";
+import {
+    getFillFromContract,
+    getOfferFromContract,
+} from "src/core/services/contract-service";
 
 export async function createOrder(event: OrderCreatedEvent) {
     console.log("Creating order", JSON.stringify(event));
@@ -26,16 +33,14 @@ export async function createOrder(event: OrderCreatedEvent) {
 
 export async function fillOrder(event: OrderFilledEvent) {
     console.log("Filling order", JSON.stringify(event));
-    const possibleNewOrder = await getOfferFromContract(
+    const possibleNewFill = await getFillFromContract(
         event.blockchain,
-        event.orderId
+        event.fillId
     );
 
-    const existingOrder = await fetchOrder({
-        orderId: possibleNewOrder?.orderId,
-        networkId: possibleNewOrder?.blockchainNetwork.id,
+    const existingFill = await fetchFillHistory({
+        fillId: possibleNewFill?.fillId,
     });
 
-    if (!existingOrder && possibleNewOrder)
-        await insertNewOrder(possibleNewOrder);
+    if (!existingFill && possibleNewFill) await insertNewFill(possibleNewFill);
 }

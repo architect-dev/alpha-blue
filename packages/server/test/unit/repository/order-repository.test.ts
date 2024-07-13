@@ -25,7 +25,6 @@ describe("Order Repository", () => {
     test("should get order by pkId", async () => {
         const newOrder: NewOrder = {
             orderId: "123-2",
-            transactionId: "123",
             orderWalletAddress: "0x123",
             allowPartialFill: false,
             orderStatus: 1,
@@ -37,7 +36,7 @@ describe("Order Repository", () => {
             newPotentialFills: [],
         };
         const generatedOrder = await insertNewOrder(newOrder);
-        const order = await getOrder(generatedOrder?.pkId || 0);
+        const order = await getOrder({ pkId: generatedOrder?.pkId });
 
         expect(order?.orderId).toBe(newOrder.orderId);
     });
