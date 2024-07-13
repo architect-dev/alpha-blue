@@ -127,6 +127,7 @@ enum ErrorType {
     INVALID__OFFER_CHAIN_MISMATCH,
     INVALID__OFFER_ID,
     INVALID__TOKEN_MISMATCH,
+    INVALID__TOKEN_AMOUNT_MISMATCH,
     INVALID__NFT_MISMATCH,
     INVALID__PARTIAL_FILL_ON_NON_PARTIAL
 }
@@ -438,6 +439,7 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
         ErrorType err = _handleCFILLReturnErrorType(sourceChain, ccipBlue);
         if (err == ErrorType.NONE) return;
 
+        ccipBlue.messageType = MessageType.CINVALID;
         ccipBlue.errorType = err;
         _sendCCIP(ccipBlue);
     }
@@ -502,7 +504,7 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
                 offer.fillOptions[i].tokenAmount.scaleByBP(
                     ccipBlue.partialBP
                 ) != ccipBlue.fillTokenAmount
-            ) return ErrorType.INVALID__TOKEN_MISMATCH;
+            ) return ErrorType.INVALID__TOKEN_AMOUNT_MISMATCH;
         }
         if (!fillMatched) return ErrorType.INVALID__TOKEN_MISMATCH;
 
@@ -672,6 +674,13 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
     uint256 public fillsCount = 0;
     mapping(uint256 => FillData) public fills;
 
+    function getFill(
+        uint256 fillId
+    ) public view returns (FillData memory fill) {
+        if (fillId >= fillsCount) revert InvalidFillId();
+        fill = fills[fillId];
+    }
+
     function createFill(FillParams calldata params) public {
         // Validate fill token
         if (chainTokens[chainId][params.fillTokenAddress] != true)
@@ -695,6 +704,8 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
         fillsCount += 1;
         FillData storage fill = fills[fillId];
 
+        fill.owner = msg.sender;
+        fill.status = FillStatus.PENDING;
         fill.offerChain = params.offerChain;
         fill.offerId = params.offerId;
         fill.fillTokenAddress = params.fillTokenAddress;
@@ -836,14 +847,11 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
     function receiveCCIP(CCIPBlue memory ccipBlue) public {
         if (ccipBlue.messageType == MessageType.CFILL) {
             _handleCFILL(chainId, ccipBlue);
-        }
-        if (ccipBlue.messageType == MessageType.CXFILL) {
+        } else if (ccipBlue.messageType == MessageType.CXFILL) {
             _handleCXFILL(chainId, ccipBlue);
-        }
-        if (ccipBlue.messageType == MessageType.CINVALID) {
+        } else if (ccipBlue.messageType == MessageType.CINVALID) {
             _handleCINVALID(chainId, ccipBlue);
-        }
-        if (ccipBlue.messageType == MessageType.CDEADLINE) {
+        } else if (ccipBlue.messageType == MessageType.CDEADLINE) {
             _handleCDEADLINE(chainId, ccipBlue);
         }
     }

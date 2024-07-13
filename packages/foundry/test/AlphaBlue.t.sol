@@ -177,4 +177,227 @@ contract AlphaBlueTest is AlphaBlueBase {
         OfferData memory offer = alphaBlueArb.getOffer(offerId);
         assertEq(offer.status == OfferStatus.FILLED, true, "Offer filled");
     }
+
+    function test_fillOffer_PseudoReverts() public {
+        vm.prank(user1);
+        WETH.approve(address(alphaBlueArb), type(uint256).max);
+        vm.prank(user2);
+        USDC.approve(address(alphaBlueArb), type(uint256).max);
+
+        OfferData memory offerParams = _createBaseOfferParams();
+
+        vm.prank(user1);
+        uint256 offerId = alphaBlueArb.createOffer(offerParams);
+
+        FillParams memory fillParams = _createBaseFillParams(
+            arbChainId,
+            offerId,
+            address(USDC),
+            3000e6,
+            offerParams
+        );
+
+        // == TOKEN_MISMATCH ==
+        {
+            uint256 snap = vm.snapshot();
+
+            vm.prank(user2);
+            WETH.approve(address(alphaBlueArb), type(uint256).max);
+
+            // Ada pays for fill
+            _expectTokenTransfer(WETH, user2, address(alphaBlueArb), 0.75e18);
+            // Ada is refunded on revert
+            _expectTokenTransfer(WETH, address(alphaBlueArb), user2, 0.75e18);
+            // Emit FillFailed
+            vm.expectEmit(true, true, true, true);
+            emit FillFailed(arbChainId, user2, 0);
+
+            fillParams.fillTokenAddress = address(WETH);
+            fillParams.fillTokenAmount = 0.75e18;
+
+            vm.prank(user2);
+            alphaBlueArb.createFill(fillParams);
+
+            // Ada refunded (see above)
+
+            // Ada error type set correctly
+            // Ada fill status marked INVALID
+            FillData memory fill = alphaBlueArb.getFill(0);
+            assertEq(
+                fill.errorType == ErrorType.INVALID__TOKEN_MISMATCH,
+                true,
+                "Error is INVALID__TOKEN_MISMATCH"
+            );
+            assertEq(
+                fill.status == FillStatus.INVALID,
+                true,
+                "Ada fill marked INVALID"
+            );
+
+            // Emit FillFailed (see above)
+
+            vm.revertTo(snap);
+
+            // CLEANUP
+            fillParams.fillTokenAddress = address(USDC);
+            fillParams.fillTokenAmount = 3000e6;
+        }
+
+        //  == TOKEN_AMOUNT_MISMATCH ==
+        {
+            uint256 snap = vm.snapshot();
+
+            // Ada pays for fill
+            _expectTokenTransfer(USDC, user2, address(alphaBlueArb), 2700e6);
+            // Ada is refunded on revert
+            _expectTokenTransfer(USDC, address(alphaBlueArb), user2, 2700e6);
+            // Emit FillFailed
+            vm.expectEmit(true, true, true, true);
+            emit FillFailed(arbChainId, user2, 0);
+
+            fillParams.fillTokenAmount = 2700e6;
+
+            vm.prank(user2);
+            alphaBlueArb.createFill(fillParams);
+
+            // Ada refunded (see above)
+
+            // Ada error type set correctly
+            // Ada fill status marked INVALID
+            FillData memory fill = alphaBlueArb.getFill(0);
+            assertEq(
+                fill.errorType == ErrorType.INVALID__TOKEN_AMOUNT_MISMATCH,
+                true,
+                "Error is INVALID__TOKEN_AMOUNT_MISMATCH"
+            );
+            assertEq(
+                fill.status == FillStatus.INVALID,
+                true,
+                "Ada fill marked INVALID"
+            );
+
+            // Emit FillFailed (see above)
+
+            vm.revertTo(snap);
+
+            // Cleanup
+            fillParams.fillTokenAmount = 3000e6;
+        }
+
+        //  == INVALID_TOKEN_MISMATCH ==
+        {
+            uint256 snap = vm.snapshot();
+
+            // Ada pays for fill
+            _expectTokenTransfer(USDC, user2, address(alphaBlueArb), 3000e6);
+            // Ada is refunded on revert
+            _expectTokenTransfer(USDC, address(alphaBlueArb), user2, 3000e6);
+            // Emit FillFailed
+            vm.expectEmit(true, true, true, true);
+            emit FillFailed(arbChainId, user2, 0);
+
+            fillParams.offerTokenAddress = address(WBTC);
+
+            vm.prank(user2);
+            alphaBlueArb.createFill(fillParams);
+
+            // Ada refunded (see above)
+
+            // Ada error type set correctly
+            // Ada fill status marked INVALID
+            FillData memory fill = alphaBlueArb.getFill(0);
+            assertEq(
+                fill.errorType == ErrorType.INVALID__TOKEN_MISMATCH,
+                true,
+                "Error is INVALID__TOKEN_MISMATCH"
+            );
+            assertEq(
+                fill.status == FillStatus.INVALID,
+                true,
+                "Ada fill marked INVALID"
+            );
+
+            // Emit FillFailed (see above)
+
+            vm.revertTo(snap);
+
+            // Cleanup
+            fillParams.offerTokenAddress = address(WETH);
+        }
+
+        //  == INVALID_NFT_MISMATCH ==
+        //  == UNAVAILABLE__EXPIRED ==
+        //  == UNAVAILABLE__DEADLINED ==
+        //  == UNAVAILABLE__CANCELLED ==
+        //  == INVALID__OFFER_ID ==
+        //  == UNAVAILABLE__FILL_BP ==
+    }
+
+    function test_fillOffer_HaltAndContinue() public {
+        vm.prank(user1);
+        WETH.approve(address(alphaBlueArb), type(uint256).max);
+        vm.prank(user2);
+        USDC.approve(address(alphaBlueArb), type(uint256).max);
+
+        OfferData memory offerParams = _createBaseOfferParams();
+
+        vm.prank(user1);
+        uint256 offerId = alphaBlueArb.createOffer(offerParams);
+
+        FillParams memory fillParams = _createBaseFillParams(
+            arbChainId,
+            offerId,
+            address(USDC),
+            3000e6,
+            offerParams
+        );
+
+        vm.prank(user1);
+        WETH.approve(address(alphaBlueArb), 0);
+
+        // Ada pays for fill
+        _expectTokenTransfer(USDC, user2, address(alphaBlueArb), 3000e6);
+
+        vm.prank(user2);
+        alphaBlueArb.createFill(fillParams);
+
+        OfferData memory offer = alphaBlueArb.getOffer(offerId);
+        assertEq(offer.pendingBP, 10000, "BP Marked as pending");
+        assertEq(offer.offerFills.length, 1, "Fill added to array");
+
+        FillData memory fill = alphaBlueArb.getFill(0);
+        assertEq(fill.status == FillStatus.PENDING, true, "Fill is pending");
+
+        // REVERSIONS
+
+        vm.expectRevert(InvalidOfferId.selector);
+        vm.prank(user1);
+        alphaBlueArb.nudgeOffer(10);
+
+        vm.expectRevert(NotOfferer.selector);
+        vm.prank(user2);
+        alphaBlueArb.nudgeOffer(offerId);
+
+        // CONTINUE
+
+        vm.prank(user1);
+        WETH.approve(address(alphaBlueArb), type(uint256).max);
+
+        // Bob pays for offer
+        _expectTokenTransfer(WETH, user1, address(alphaBlueArb), 1e18);
+        // Bob refunded deposit
+        _expectTokenTransfer(WETH, address(alphaBlueArb), user1, 0.01e18);
+        // Ada receives offer on other side of bridge
+        _expectTokenTransfer(WETH, address(alphaBlueArb), user2, 1e18);
+        // Bob receives fill on other side of bridge
+        _expectTokenTransfer(USDC, address(alphaBlueArb), user1, 3000e6);
+
+        vm.prank(user1);
+        alphaBlueArb.nudgeOffer(offerId);
+
+        offer = alphaBlueArb.getOffer(offerId);
+        fill = alphaBlueArb.getFill(0);
+        assertEq(offer.status == OfferStatus.FILLED, true, "Offer filled");
+        assertEq(fill.status == FillStatus.SUCCEEDED, true, "Fill succeeded");
+    }
 }
