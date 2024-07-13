@@ -66,7 +66,11 @@ export async function getOfferFromContract(
         await contract.contract.getOffer(orderId)
     ).offer;
 
-    const formattedOrderId = formatContractId(sourceBlockchain.name, orderId);
+    const formattedOrderId = formatContractId(
+        sourceBlockchain.name,
+        "order",
+        orderId
+    );
 
     const sourceTokenMetadata = await getTokenMetadata({
         networkId: sourceBlockchain.id,
@@ -130,6 +134,7 @@ export async function getFillFromContract(
 
     const formattedOrderId = formatContractId(
         fillBlockchain.name,
+        "fill",
         contractFill.offerId
     );
 

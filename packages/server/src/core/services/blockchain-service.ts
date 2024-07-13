@@ -4,6 +4,8 @@ import {
     BaseEventModel,
     EventModel,
     FillFailedEvent,
+    OfferCancelledEvent,
+    OfferDeadlinedEvent,
     OrderCreatedEvent,
     OrderFilledEvent,
 } from "src/core/models/chain-event-models";
@@ -13,6 +15,7 @@ import {
     createOrder,
     fillOrder,
     updateFillStatus,
+    updateOffer,
 } from "src/core/services/order-service";
 
 const OfferCreated_EVENT_NAME = "OfferCreated";
@@ -200,6 +203,22 @@ export async function processEventModel(eventModel: BaseEventModel) {
         case "FillFailed": {
             const event: FillFailedEvent = eventModel as FillFailedEvent;
             await updateFillStatus(event);
+
+            break;
+        }
+
+        case "OfferCancelled": {
+            const event: OfferCancelledEvent =
+                eventModel as OfferCancelledEvent;
+            await updateOffer(event);
+
+            break;
+        }
+
+        case "OfferDeadlined": {
+            const event: OfferDeadlinedEvent =
+                eventModel as OfferDeadlinedEvent;
+            await updateOffer(event);
 
             break;
         }

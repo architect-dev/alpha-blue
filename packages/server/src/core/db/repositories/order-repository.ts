@@ -11,8 +11,11 @@ import {
     newOrderToOrderDbModel,
     orderDbModelToOrder,
 } from "src/core/mappers/order-mappers";
-import { OrderDbModel } from "src/core/models/db-models";
-import { NewOrder, Order } from "src/core/models/domain-models";
+import {
+    BlockchainNetworkDbModel,
+    OrderDbModel,
+} from "src/core/models/db-models";
+import { NewOrder, Order, OrderStatus } from "src/core/models/domain-models";
 
 const orderTable = "order";
 
@@ -132,4 +135,21 @@ export async function insertNewOrder(newOrder: NewOrder): Promise<Order> {
     });
 
     return await getOrder({ pkId: insertedPkId[0] });
+}
+
+export async function updateOrderStatus(
+    orderId: string,
+    orderStatus: OrderStatus
+): Promise<Order> {
+    const databaseConnection = DatabaseManager.getInstance();
+
+    await databaseConnection
+        .select<BlockchainNetworkDbModel>()
+        .from("blockchain_network")
+        .where("order_id", orderId)
+        .update({
+            order_status: orderStatus,
+        });
+
+    return await getOrder({ orderId });
 }

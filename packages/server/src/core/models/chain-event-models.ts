@@ -81,7 +81,7 @@ export class OfferCancelledEvent extends BaseEventModel {
     }
 }
 
-export class OfferDeadlined extends BaseEventModel {
+export class OfferDeadlinedEvent extends BaseEventModel {
     creatorWalletAddress: string;
 
     constructor(event: EventModel, blockchain: BlockchainNetwork) {
