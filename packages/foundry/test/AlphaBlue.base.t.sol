@@ -299,11 +299,7 @@ abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
     function _prepExpectETHBalChange(uint256 id, address add) public {
         ethBalances[id][add] = add.balance;
     }
-    function _expectETHBalChange(
-        uint256 id,
-        address add,
-        int256 value
-    ) public view {
+    function _expectETHBalChange(uint256 id, address add, int256 value) public {
         _expectETHBalChange(id, add, value, "");
     }
     function _expectETHBalChange(
@@ -311,7 +307,7 @@ abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
         address add,
         int256 value,
         string memory label
-    ) public view {
+    ) public {
         assertEq(
             add.balance,
             uint256(int256(ethBalances[id][add]) + value),
@@ -332,7 +328,7 @@ abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
         address from,
         address to,
         uint256 value
-    ) public view {
+    ) public {
         assertEq(
             from.balance,
             ethBalances[id][from] - value,
@@ -433,5 +429,20 @@ abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
         if (_chainId == 421614) return 3478487238524512106; // Arbitrum Sepolia
 
         revert UnsupportedChainId();
+    }
+
+    function _getCCIPEncodedReceiver(
+        CCIPBlue memory ccipBlue
+    ) internal pure returns (bytes32) {
+        if (ccipBlue.messageType == MessageType.CFILL) {
+            return bytes32(abi.encode(ccipBlue.offerChain));
+        } else if (ccipBlue.messageType == MessageType.CXFILL) {
+            return bytes32(abi.encode(ccipBlue.fillChain));
+        } else if (ccipBlue.messageType == MessageType.CINVALID) {
+            return bytes32(abi.encode(ccipBlue.fillChain));
+        } else if (ccipBlue.messageType == MessageType.CDEADLINE) {
+            return bytes32(abi.encode(ccipBlue.offerChain));
+        }
+        return bytes32(abi.encode(address(0)));
     }
 }

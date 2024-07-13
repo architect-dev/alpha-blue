@@ -878,6 +878,7 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
         console.log(
             "ccipReceive",
             uint256(ccipBlue.messageType),
+            uint256(MessageType.CXFILL),
             uint256(any2EvmMessage.sourceChainSelector)
         );
 
