@@ -187,7 +187,7 @@ library QuikMaff {
 
 // MAIN CONTRACT
 
-contract AlphaBlueOfferer is Ownable {
+contract AlphaBlue is Ownable {
     using QuikMaff for uint256;
     using SafeERC20 for IERC20;
 
