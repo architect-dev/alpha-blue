@@ -9391,6 +9391,7 @@ __metadata:
     "@types/jest": ^29.5.12
     "@typescript-eslint/eslint-plugin": 6.9.1
     "@typescript-eslint/parser": 6.9.1
+    abitype: 1.0.2
     aws-sdk: ^2.1536.0
     babel-jest: ^29.7.0
     dotenv: ^16.4.5
@@ -9407,6 +9408,7 @@ __metadata:
     serverless-offline: ^13.6.0
     ts-jest: ^29.2.2
     typescript: 5.2.2
+    viem: ^2.17.3
   languageName: unknown
   linkType: soft
 

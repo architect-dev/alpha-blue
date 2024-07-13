@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     WETH: {
-      address: "0x809d550fca64d94Bd9F66E60752A544199cfAC3D",
+      address: "0x922D6956C99E12DFeB3224DEA977D0939758A1Fe",
       abi: [
         {
           type: "constructor",
@@ -738,7 +738,7 @@ const deployedContracts = {
       inheritedFunctions: {},
     },
     WBTC: {
-      address: "0x4c5859f0F772848b2D91F1D83E2Fe57935348029",
+      address: "0x5081a39b8A5f0E35a8D959395a630b68B74Dd30f",
       abi: [
         {
           type: "constructor",
@@ -1469,7 +1469,7 @@ const deployedContracts = {
       inheritedFunctions: {},
     },
     USDC: {
-      address: "0x1291Be112d480055DaFd8a610b7d1e203891C274",
+      address: "0x1fA02b2d6A771842690194Cf62D91bdd92BfE28d",
       abi: [
         {
           type: "constructor",
@@ -2200,7 +2200,7 @@ const deployedContracts = {
       inheritedFunctions: {},
     },
     BNB: {
-      address: "0x5f3f1dBD7B74C6B46e8c44f98792A1dAf8d69154",
+      address: "0xdbC43Ba45381e02825b14322cDdd15eC4B3164E6",
       abi: [
         {
           type: "constructor",
@@ -2931,7 +2931,7 @@ const deployedContracts = {
       inheritedFunctions: {},
     },
     alphaBlueArb: {
-      address: "0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575",
+      address: "0x04C89607413713Ec9775E14b954286519d836FEf",
       abi: [
         {
           type: "constructor",
@@ -4237,7 +4237,7 @@ const deployedContracts = {
       inheritedFunctions: {},
     },
     alphaBlueBase: {
-      address: "0xCD8a1C3ba11CF5ECfa6267617243239504a98d90",
+      address: "0x4C4a2f8c81640e47606d3fd77B353E87Ba015584",
       abi: [
         {
           type: "constructor",
@@ -5543,7 +5543,7 @@ const deployedContracts = {
       inheritedFunctions: {},
     },
     alphaBlueCelo: {
-      address: "0x82e01223d51Eb87e16A03E24687EDF0F294da6f1",
+      address: "0x21dF544947ba3E8b3c32561399E88B52Dc8b2823",
       abi: [
         {
           type: "constructor",
