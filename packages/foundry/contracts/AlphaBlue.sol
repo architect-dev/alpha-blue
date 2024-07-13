@@ -8,8 +8,6 @@ import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeE
 
 // STRUCTS / EVENTS / ERRORS
 
-// TODO: Send CMESSAGE to claim stake of pending tx that has passed the deadline, this will cancel the remainder of the offer if there are no other pendingBP
-
 struct ChainData {
     bool valid;
     uint256 chainId;
@@ -206,7 +204,17 @@ contract AlphaBlueOfferer is Ownable {
         address indexed creator,
         uint256 indexed offerId
     );
+    event OfferFilled(
+        uint256 indexed chainId,
+        address indexed creator,
+        uint256 indexed offerId
+    );
     event FillFailed(
+        uint256 indexed chainId,
+        address indexed filler,
+        uint256 indexed fillId
+    );
+    event FillXFilled(
         uint256 indexed chainId,
         address indexed filler,
         uint256 indexed fillId
@@ -519,6 +527,8 @@ contract AlphaBlueOfferer is Ownable {
         if (offer.nftAddress != address(0)) {
             // @TODO: send NFT to adaAddress, update state
         }
+
+        emit OfferDeadlined(chainId, offer.owner, offerId);
     }
     function _checkAllowanceAndBalance(
         address token,
@@ -636,7 +646,7 @@ contract AlphaBlueOfferer is Ownable {
 
         fill.status = FillStatus.SUCCEEDED;
 
-        // @TODO: Emit event
+        emit FillXFilled(chainId, fill.owner, ccipBlue.fillId);
     }
     function _handleCINVALID(
         uint256 offerChainId,
