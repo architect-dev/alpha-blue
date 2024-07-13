@@ -359,7 +359,7 @@ abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
         address fillTokenAddress,
         uint256 fillTokenAmount,
         OfferData memory offerParams
-    ) internal view returns (FillParams memory fillParams) {
+    ) internal pure returns (FillParams memory fillParams) {
         fillParams.offerChain = offerChain;
         fillParams.offerId = offerId;
         fillParams.offerTokenAddress = offerParams.tokenAddress;
