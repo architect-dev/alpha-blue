@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET() {
-  const apiUrl = "https://g1cvuapee3.execute-api.us-east-1.amazonaws.com/api/v1/orders?cache=" + Date.now();
+export async function GET(request: NextRequest, { params }: { params: { trade: string } }) {
+  const trade = params.trade;
+  const apiUrl = `https://g1cvuapee3.execute-api.us-east-1.amazonaws.com/api/v1/orders/${trade}?cache=${Date.now()}`;
 
   try {
     const response = await fetch(apiUrl);

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAccount, useBalance } from "wagmi";
-import { parseUnits, zeroAddress, ContractFunctionExecutionError } from "viem";
+import { parseUnits, zeroAddress } from "viem";
 import Moralis from 'moralis';
 import { useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 import { getParsedError } from "~~/utils/scaffold-eth";
@@ -37,7 +37,7 @@ const tokenMetadata = [
     address: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
     decimals: 6,
     name: "Base Sepolia",
-    logo_url: "USDC_LOGO",
+    logo_url: "/path/to/USDC_LOGO.png",
     network_id: 84532,
   },
   {
@@ -45,7 +45,7 @@ const tokenMetadata = [
     address: "0x2F25deB3848C207fc8E0c34035B3Ba7fC157602B",
     decimals: 6,
     name: "Celo Alfajores",
-    logo_url: "USDC_LOGO",
+    logo_url: "/path/to/USDC_LOGO.png",
     network_id: 44787,
   },
   {
@@ -53,14 +53,14 @@ const tokenMetadata = [
     name: "Arbitrum Sepolia",
     address: "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
     decimals: 6,
-    logo_url: "USDC_LOGO",
+    logo_url: "/path/to/USDC_LOGO.png",
     network_id: 421614,
   },
 ];
 
 // Initialize Moralis
 Moralis.start({
-  apiKey: process.env.NEXT_PUBLIC_MORALIS_API_KEY,
+  apiKey: "your-moralis-api-key",
 });
 
 const useUserNFTs = (address: string | undefined, chain: number | undefined) => {
@@ -188,7 +188,7 @@ const CreateTrade = () => {
     };
 
     try {
-      console.log({ offerData })
+      console.log({ offerData });
       await createOfferWrite({
         functionName: "createOffer",
         args: [offerData]
@@ -200,12 +200,10 @@ const CreateTrade = () => {
     }
   };
 
-
-
   return (
-    <div className="container mx-auto p-4 min-h-screen mt-10 flex flex-col items-center">
+    <div className="container mx-auto p-4 mt-10 flex flex-col items-center">
       <h1 className="text-3xl font-bold mb-6">Create a New Trade</h1>
-      <form onSubmit={handleSubmit} className="w-full max-w-md bg-gray-200 p-6 rounded-lg shadow-md">
+      <form onSubmit={handleSubmit} className="w-full max-w-lg bg-white p-6 rounded-lg shadow-md">
         <div className="mb-6">
           <label className="block text-xl font-bold mb-2">Your Offer</label>
           <div className="flex items-center mb-4">
@@ -243,7 +241,9 @@ const CreateTrade = () => {
                 >
                   <option value="">Select chain</option>
                   {tokenMetadata.map(token => (
-                    <option key={token.name} value={token.name}>{token.name}</option>
+                    <option key={token.name} value={token.name}>
+                      {token.name}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -261,7 +261,7 @@ const CreateTrade = () => {
                   </div>
 
                   {balance && selectedChain && (
-                    <div className="bg-white p-3 py-2 rounded-md mb-4">
+                    <div className="bg-gray-100 p-3 py-2 rounded-md mb-4">
                       <label className="block text-sm font-bold">Your Balance</label>
                       {isLoading && <div>Loading balance...</div>}
                       {isError && <div>Error fetching balance</div>}
@@ -276,7 +276,7 @@ const CreateTrade = () => {
                   <div className="mb-4">
                     <div className="text-sm text-neutral-600 mb-1">Amount of {balance?.symbol || 'token'} to add to trade:</div>
                     <input
-                      type="text"
+                      type="number"
                       className="w-full p-2 border rounded-md"
                       value={selectedTokenAmount}
                       onChange={(e) => setSelectedTokenAmount(e.target.value)}
@@ -356,7 +356,8 @@ const CreateTrade = () => {
             </label>
           </div>
           {tradeOptions.map((option, index) => (
-            <div key={index} className="bg-white p-4 rounded-md mb-4">
+            <div key={index} className="bg-gray-100 p-4 rounded-md mb-4">
+              <label className="block text-sm font-bold mb-2">Blockchain</label>
               <select
                 className="w-full p-2 border rounded-md mb-2"
                 value={option.chain}
@@ -364,25 +365,30 @@ const CreateTrade = () => {
               >
                 <option value="">Select Chain</option>
                 {tokenMetadata.map(token => (
-                  <option key={token.name} value={token.name}>{token.name}</option>
+                  <option key={token.name} value={token.name}>
+                    {token.name}
+                  </option>
                 ))}
               </select>
-              <select
-                className="w-full p-2 border rounded-md mb-2"
-                value={option.token}
-                onChange={e => handleOptionChange(index, "token", e.target.value)}
-              >
-                <option value="USDC">USDC</option>
-              </select>
-              <div className="flex items-center">
-                <label className="block text-sm font-bold mr-2">Amount</label>
-                <input
-                  type="text"
-                  className="w-full p-2 border rounded-md"
-                  value={option.amount}
-                  onChange={e => handleOptionChange(index, "amount", e.target.value)}
-                />
-              </div>
+              {option.chain && (
+                <>
+                  <label className="block text-sm font-bold mb-2">Token</label>
+                  <select
+                    className="w-full p-2 border rounded-md mb-2"
+                    value={option.token}
+                    onChange={e => handleOptionChange(index, "token", e.target.value)}
+                  >
+                    <option value="USDC">USDC</option>
+                  </select>
+                  <label className="block text-sm font-bold mb-2">Amount</label>
+                  <input
+                    type="number"
+                    className="w-full p-2 border rounded-md"
+                    value={option.amount}
+                    onChange={e => handleOptionChange(index, "amount", e.target.value)}
+                  />
+                </>
+              )}
             </div>
           ))}
           <button
@@ -395,7 +401,7 @@ const CreateTrade = () => {
         </div>
         <button
           type="submit"
-          className="w-full bg-black text-white py-2 rounded-md"
+          className="w-full bg-blue-700 text-white py-2 rounded-md"
           disabled={isCreateOfferLoading}
         >
           {isCreateOfferLoading ? "Creating offer..." : "Submit"}
