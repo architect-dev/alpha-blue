@@ -10,7 +10,7 @@ export enum FillStatus {
     "Succeeded" = 3,
     "Expired" = 4,
     "FillFailed" = 5,
-    "XFillFailed" = 6,
+    "FillXFilled" = 6,
 }
 
 export type BlockchainNetwork = {
@@ -50,6 +50,8 @@ export type Order = {
     tokenMetadata: TokenMetadata;
     tokenAmount: string;
     expirationDate: number;
+    filledBasisPoints: number;
+    pendingBasisPoints: number;
 
     updatedAt: number;
     createdAt: number;

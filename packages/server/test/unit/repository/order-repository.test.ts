@@ -60,6 +60,8 @@ describe("Order Repository", () => {
                     active: true,
                 },
             ],
+            pendingBasisPoints: 0,
+            filledBasisPoints: 0,
         };
         const generatedOrder = await insertNewOrder(newOrder);
         const order = await getOrder({ pkId: generatedOrder?.pkId });

@@ -33,6 +33,8 @@ export type OrderDbModel = {
     token_pk_id: number;
     token_amount: string;
     expiration_date: number;
+    filled_basis_points: number;
+    pending_basis_points: number;
 
     created_at: string;
     updated_at: string;

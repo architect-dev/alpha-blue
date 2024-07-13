@@ -6,10 +6,7 @@ import {
     fillHistoryDbModelToFillHistory,
     newFillHistoryToFillHistoryDbModel,
 } from "src/core/mappers/order-fill-mappers";
-import {
-    BlockchainNetworkDbModel,
-    FillHistoryDbModel,
-} from "src/core/models/db-models";
+import { FillHistoryDbModel } from "src/core/models/db-models";
 import {
     FillHistory,
     FillStatus,
@@ -122,7 +119,7 @@ export async function fetchFillHistory(options: {
     else return fills[0];
 }
 
-export async function insertNewFill(
+export async function insertNewFillHistory(
     newFill: NewFillHistory
 ): Promise<FillHistory> {
     const knex = DatabaseManager.getInstance();
@@ -143,7 +140,7 @@ export async function updateFillHistory(
     const databaseConnection = DatabaseManager.getInstance();
 
     await databaseConnection
-        .select<BlockchainNetworkDbModel>()
+        .select<FillHistoryDbModel>()
         .from(fillHistoryTable)
         .where("fill_Id", fillId)
         .update({

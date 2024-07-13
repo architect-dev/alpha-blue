@@ -20,11 +20,13 @@ import {
 
 const OfferCreated_EVENT_NAME = "OfferCreated";
 const OfferFilled_EVENT_NAME = "OfferFilled";
+const OfferCancelled_EVENT_NAME = "OfferCancelled";
+const OfferDeadlined_EVENT_NAME = "OfferDeadlined";
+
 const FillDeadlined_EVENT_NAME = "FillDeadlined";
 const FillFailed_EVENT_NAME = "FillFailed";
 const FillXFilled_EVENT_NAME = "FillXFilled";
-const OfferCancelled_EVENT_NAME = "OfferCancelled";
-const OfferDeadlined_EVENT_NAME = "OfferDeadlined";
+const FillCreated_EVENT_NAME = "FillCreated";
 
 const eventNames = [
     OfferCreated_EVENT_NAME,
@@ -34,6 +36,7 @@ const eventNames = [
     FillXFilled_EVENT_NAME,
     OfferCancelled_EVENT_NAME,
     OfferDeadlined_EVENT_NAME,
+    FillCreated_EVENT_NAME,
 ];
 
 export const eventToModelType: Record<string, typeof BaseEventModel> = {};

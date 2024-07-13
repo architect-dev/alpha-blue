@@ -1,15 +1,18 @@
 import {
     fetchFillHistory,
-    insertNewFill,
+    insertNewFillHistory,
     updateFillHistory,
 } from "src/core/db/repositories/fill-history-repository";
 import {
     fetchOrder,
+    getOrder,
     insertNewOrder,
+    updateOrderBasisPoints,
     updateOrderStatus,
 } from "src/core/db/repositories/order-repository";
 import { cancelPotentialFills } from "src/core/db/repositories/potential-fill-repository";
 import {
+    FillCreatedEvent,
     FillDeadlinedEvent,
     FillFailedEvent,
     FillXFilledEvent,
@@ -23,7 +26,10 @@ import {
     getFillFromContract,
     getOfferFromContract,
 } from "src/core/services/contract-service";
-import { formatContractId } from "src/core/utils/format-tools";
+import {
+    formatContractId,
+    stripContractIdPrefix,
+} from "src/core/utils/format-tools";
 
 export async function createOrder(event: OrderCreatedEvent) {
     console.log("Creating order", JSON.stringify(event));
@@ -41,6 +47,40 @@ export async function createOrder(event: OrderCreatedEvent) {
         await insertNewOrder(possibleNewOrder);
 }
 
+export async function createFill(event: FillCreatedEvent) {
+    console.log("Creating fill", JSON.stringify(event));
+    const possibleNewFillHistory = await getFillFromContract(
+        event.blockchain,
+        event.fillId
+    );
+
+    const formattedFillId = formatContractId(
+        event.blockchain.name,
+        "fill",
+        event.orderId
+    );
+
+    const existingFillHistory = await fetchFillHistory({
+        fillId: formattedFillId,
+    });
+
+    if (!existingFillHistory && possibleNewFillHistory)
+        await insertNewFillHistory(possibleNewFillHistory);
+
+    const order = await getOrder({ pkId: possibleNewFillHistory?.orderPkId });
+
+    const simplifiedOrderId = stripContractIdPrefix(order.orderId);
+    const contractOrder = await getOfferFromContract(
+        order.blockchainNetwork,
+        simplifiedOrderId
+    );
+
+    await updateOrderBasisPoints(order.pkId, {
+        pendingBasisPoints: contractOrder.pendingBasisPoints,
+        remainingBasisPoints: contractOrder.filledBasisPoints,
+    });
+}
+
 export async function fillOrder(event: OrderFilledEvent) {
     console.log("Filling order", JSON.stringify(event));
     const possibleNewFill = await getFillFromContract(
@@ -52,7 +92,21 @@ export async function fillOrder(event: OrderFilledEvent) {
         fillId: possibleNewFill?.fillId,
     });
 
-    if (!existingFill && possibleNewFill) await insertNewFill(possibleNewFill);
+    if (!existingFill && possibleNewFill)
+        await insertNewFillHistory(possibleNewFill);
+
+    const order = await getOrder({ pkId: possibleNewFill.orderPkId });
+
+    const simplifiedOrderId = stripContractIdPrefix(order.orderId);
+    const contractOrder = await getOfferFromContract(
+        order.blockchainNetwork,
+        simplifiedOrderId
+    );
+
+    await updateOrderBasisPoints(order.pkId, {
+        pendingBasisPoints: contractOrder.pendingBasisPoints,
+        remainingBasisPoints: contractOrder.filledBasisPoints,
+    });
 }
 
 export async function updateFillStatus(
@@ -70,7 +124,7 @@ export async function updateFillStatus(
             break;
 
         case "FillXFilledEvent":
-            newStatus = FillStatus.XFillFailed;
+            newStatus = FillStatus.FillXFilled;
             break;
 
         default:

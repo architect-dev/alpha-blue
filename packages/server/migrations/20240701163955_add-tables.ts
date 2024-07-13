@@ -115,6 +115,8 @@ export async function up(knex: Knex) {
         table.string("nft_id", 100).nullable();
         table.integer("order_date").notNullable();
         table.integer("filled_date").nullable();
+        table.integer("filled_basis_points").notNullable().defaultTo(0);
+        table.integer("pending_basis_points").notNullable().defaultTo(0);
 
         createForeignKey(table, "network_id", "id", blockchainNetworkTable, {
             createForeignKeyRow: true,

@@ -145,11 +145,32 @@ export async function updateOrderStatus(
 
     await databaseConnection
         .select<BlockchainNetworkDbModel>()
-        .from("blockchain_network")
+        .from(orderTable)
         .where("order_id", orderId)
         .update({
             order_status: orderStatus,
         });
 
     return await getOrder({ orderId });
+}
+
+export async function updateOrderBasisPoints(
+    orderPkId: number,
+    basisPoints: {
+        pendingBasisPoints: number;
+        remainingBasisPoints: number;
+    }
+): Promise<Order> {
+    const databaseConnection = DatabaseManager.getInstance();
+
+    await databaseConnection
+        .select<BlockchainNetworkDbModel>()
+        .from(orderTable)
+        .where("pk_id", orderPkId)
+        .update({
+            pending_basis_points: basisPoints.pendingBasisPoints,
+            remaining_basis_points: basisPoints.remainingBasisPoints,
+        });
+
+    return await getOrder({ pkId: orderPkId });
 }

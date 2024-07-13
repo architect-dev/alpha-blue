@@ -1,9 +1,9 @@
 import { Order } from "src/core/models/domain-models";
 import { GetOrderHttpResponse } from "src/core/models/response-models";
-import { stripContractId } from "src/core/utils/format-tools";
+import { stripContractIdPrefix } from "src/core/utils/format-tools";
 
 export function toGetOrdersHttpResponse(order: Order): GetOrderHttpResponse {
-    const strippedId = stripContractId(order.orderId);
+    const strippedId = stripContractIdPrefix(order.orderId);
 
     const potentialFillsResponse = order.potentialFills.map((fill) => {
         const { tokenMetadata, tokenAmount } = fill;

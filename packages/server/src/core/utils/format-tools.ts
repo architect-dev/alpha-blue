@@ -6,7 +6,7 @@ export function formatContractId(
     return `${blockchainName.replace(" ", "-")}-${source}-${offerId}`;
 }
 
-export function stripContractId(id: string) {
+export function stripContractIdPrefix(id: string) {
     const orderNumber = id.substring(id.lastIndexOf("-") + 1);
 
     return parseInt(orderNumber);

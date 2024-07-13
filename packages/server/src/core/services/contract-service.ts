@@ -12,6 +12,7 @@ import { getTokenMetadata } from "src/core/db/repositories/token-metadata-reposi
 import { ContractFill, ContractOffer } from "src/core/models/contract-models";
 import {
     BlockchainNetwork,
+    FillStatus,
     NewFillHistory,
     NewOrder,
     NewPotentialFill,
@@ -111,6 +112,8 @@ export async function getOfferFromContract(
         tokenMetadata: sourceTokenMetadata,
         tokenAmount: contractOffer.tokenAmount?.toString() || "-",
         expirationDate: contractOffer.expiration,
+        filledBasisPoints: contractOffer.filledBP,
+        pendingBasisPoints: contractOffer.pendingBP,
     };
 
     return newOrder;
@@ -148,7 +151,7 @@ export async function getFillFromContract(
         blockchainNetwork: fillBlockchain,
         tokenMetadata: fillTokenMetadata,
         tokenAmount: contractFill.fillTokenAmount.toString(),
-        fillStatus: contractFill.status + 1,
+        fillStatus: FillStatus.Pending,
         expirationDate: contractFill.deadline,
     };
 

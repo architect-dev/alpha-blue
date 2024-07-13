@@ -23,6 +23,8 @@ export type ContractOffer = {
         deadline: number;
         pending: boolean;
     };
+    pendingBP: number;
+    filledBP: number;
 };
 
 export type ContractFill = {

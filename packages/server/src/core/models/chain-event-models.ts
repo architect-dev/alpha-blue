@@ -30,6 +30,14 @@ export class OrderCreatedEvent extends BaseEventModel {
     }
 }
 
+export class FillCreatedEvent extends BaseEventModel {
+    fillId: number;
+    constructor(event: EventModel, blockchain: BlockchainNetwork) {
+        super(event, blockchain);
+        this.fillId = event.parsedArgs?.fillId ?? 0;
+    }
+}
+
 export class OrderFilledEvent extends BaseEventModel {
     fillId: number;
 
