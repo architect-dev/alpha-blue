@@ -56,18 +56,20 @@ struct OfferFillData {
 }
 
 enum FillStatus {
-    CREATED,
+    PENDING,
     INVALID,
-    UNAVAILABLE,
-    COMPLETED
+    SUCCEEDED
 }
 struct FillData {
+    address owner;
     uint256 offerChain;
     uint256 offerId;
     address fillTokenAddress;
     uint256 fillTokenAmount;
     uint256 deadline;
     address adaDestAddress;
+    FillStatus status;
+    ErrorType errorType;
 }
 struct FillParams {
     uint256 offerChain;
@@ -86,7 +88,6 @@ struct FillParams {
 // 0 = CFILL - Fill has been called, tell offer that fill is available, distribute offerToken / offerNft
 // 1 = CXFILL - Offer has agreed to fill, tell fill that it can distribute fillToken
 // 2 = CINVALID - data sent with fill doesn't match order
-// 3 = CUNAVAILABLE - offer no longer available
 enum MessageType {
     CFILL,
     CXFILL,
@@ -147,6 +148,7 @@ error InvalidPartialFill();
 error FillUnavailable();
 error InvalidNFTOrder();
 error NotOfferer();
+error AlreadyXFilled();
 
 // LIBRARIES
 
@@ -179,7 +181,7 @@ contract AlphaBlueOfferer is Ownable {
     // TODO: Set available chains function
 
     OfferData[] public offers;
-    mapping(uint256 => OfferStatus) public offerStatuses; // offerid -> offerStatus mapping
+    mapping(uint256 => OfferStatus) public offerStatuses;
 
     // EVENTS
     event OfferCreated(
@@ -563,27 +565,44 @@ contract AlphaBlueOfferer is Ownable {
                 errorType: ErrorType.NONE
             })
         );
+    }
+    function _handleCXFILL(
+        uint256 offerChainId,
+        CCIPBlue memory ccipBlue
+    ) internal {
+        if (offerChainId != ccipBlue.offerChain) revert ChainMismatch();
 
-        // Send CFILL
-    }
-    function resendCFILL() public {
-        // Fill id exists
-        // Fill id owner is msg.sender
+        FillData storage fill = fills[ccipBlue.fillId];
+        if (fill.status != FillStatus.PENDING) revert AlreadyXFilled();
 
-        // Resend CFILL
-        _sendCFILL();
+        IERC20(fill.fillTokenAddress).safeTransfer(
+            ccipBlue.bobDestAddress,
+            fill.fillTokenAmount
+        );
+
+        fill.status = FillStatus.SUCCEEDED;
+
+        // @TODO: Emit event
     }
-    function _sendCFILL() internal {
-        // Encode and send CFILL
-    }
-    function _handleCXFILL() internal {
-        // _handleCXFILL
-    }
-    function _handleCINVALID() internal {
-        // _handleCINVALID
-    }
-    function _handleCUNAVAILABLE() internal {
-        // _handleCUNAVAILABLE
+    function _handleCINVALID(
+        uint256 offerChainId,
+        CCIPBlue memory ccipBlue
+    ) internal {
+        if (offerChainId != ccipBlue.offerChain) revert ChainMismatch();
+
+        FillData storage fill = fills[ccipBlue.fillId];
+        if (fill.status != FillStatus.PENDING) revert AlreadyXFilled();
+
+        // Return the funds to the filler
+        IERC20(fill.fillTokenAddress).safeTransfer(
+            fill.owner,
+            fill.fillTokenAmount
+        );
+
+        fill.status = FillStatus.INVALID;
+        fill.errorType = ccipBlue.errorType;
+
+        // @TODO: Emit event
     }
 
     //
@@ -613,23 +632,14 @@ contract AlphaBlueOfferer is Ownable {
     }
 
     function receiveCCIP(CCIPBlue memory ccipBlue) public {
-        // Decode CCIP using CCPIBlue struct
-        // Using message type, branch to functions
-
-        MessageType messageType = MessageType.CFILL;
-
-        // 0 = CFILL - Fill has been called, tell offer that fill is available, distribute offerToken / offerNft
-        // 1 = CXFILL - Offer has agreed to fill, tell fill that it can distribute fillToken
-        // 2 = CINVALID - data sent with fill doesn't match order
-        // 3 = CUNAVAILABLE - offer no longer available
-        if (messageType == MessageType.CFILL) {
+        if (ccipBlue.messageType == MessageType.CFILL) {
             _handleCFILL(chainId, ccipBlue);
         }
-        if (messageType == MessageType.CXFILL) {
-            // Route to fill function _handleCXFILL()
+        if (ccipBlue.messageType == MessageType.CXFILL) {
+            _handleCXFILL(chainId, ccipBlue);
         }
-        if (messageType == MessageType.CINVALID) {
-            // Route to fill function _handleCINVALID()
+        if (ccipBlue.messageType == MessageType.CINVALID) {
+            _handleCINVALID(chainId, ccipBlue);
         }
     }
 }
