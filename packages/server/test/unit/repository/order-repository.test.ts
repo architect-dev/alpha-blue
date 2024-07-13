@@ -10,6 +10,8 @@ import {
     TokenMetadata,
 } from "src/core/models/domain-models";
 import { currentSeconds } from "src/core/utils/dates";
+import { formatContractId } from "src/core/utils/format-tools";
+import { randomNumber } from "src/core/utils/random-number";
 import { generateWalletAddress } from "src/core/utils/wallet-generator";
 
 let baseBlockchainNetwork: BlockchainNetwork;
@@ -34,12 +36,17 @@ describe("Order Repository", () => {
 
     test("should get order by pkId", async () => {
         const walletAddress = generateWalletAddress();
+        const orderNumber = randomNumber();
         const newOrder: NewOrder = {
-            orderId: "foo-84532",
+            orderId: formatContractId(
+                baseBlockchainNetwork.name,
+                "order",
+                orderNumber
+            ),
             orderWalletAddress: walletAddress,
             allowPartialFill: false,
             orderStatus: 1,
-            orderDate: 123,
+            orderDate: currentSeconds(),
             blockchainNetwork: baseBlockchainNetwork,
             tokenMetadata: usdcBaseTokenMetadata,
             tokenAmount: "10000000",

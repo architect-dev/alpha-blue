@@ -77,7 +77,13 @@ export async function updateFillStatus(
             break;
     }
 
-    if (newStatus) await updateFillHistory(event.fillId, newStatus);
+    const formattedFillId = formatContractId(
+        event.blockchain.name,
+        "fill",
+        event.fillId
+    );
+
+    if (newStatus) await updateFillHistory(formattedFillId, newStatus);
 }
 
 export async function updateOffer(
