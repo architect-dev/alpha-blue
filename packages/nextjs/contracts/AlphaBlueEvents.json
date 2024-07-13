@@ -1,0 +1,10 @@
+{
+  "FillDeadlined(uint256,address,uint256)": "\"FillDeadlined(uint256,address,uint256)\"",
+  "FillFailed(uint256,address,uint256)": "\"FillFailed(uint256,address,uint256)\"",
+  "FillXFilled(uint256,address,uint256)": "\"FillXFilled(uint256,address,uint256)\"",
+  "OfferCancelled(uint256,address,uint256)": "\"OfferCancelled(uint256,address,uint256)\"",
+  "OfferCreated(uint256,address,uint256)": "\"OfferCreated(uint256,address,uint256)\"",
+  "OfferDeadlined(uint256,address,uint256)": "\"OfferDeadlined(uint256,address,uint256)\"",
+  "OfferFilled(uint256,address,uint256)": "\"OfferFilled(uint256,address,uint256)\"",
+  "OwnershipTransferred(address,address)": "\"OwnershipTransferred(address,address)\""
+}

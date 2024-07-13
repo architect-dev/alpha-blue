@@ -15,7 +15,8 @@
 		"test": "forge test",
 		"verify": "forge build --build-info --build-info-path out/build-info/ && forge script script/VerifyAll.s.sol --ffi --rpc-url ${1:-default_network}",
 		"generate:abi:AlphaBlue": "forge inspect contracts/AlphaBlue.sol:AlphaBlue abi > ../nextjs/contracts/AlphaBlue.json",
-		"generate:abi:IERC20": "forge inspect lib/forge-std/src/interfaces/IERC20.sol:IERC20 abi > ../nextjs/contracts/IERC20.json"
+		"generate:abi:IERC20": "forge inspect lib/forge-std/src/interfaces/IERC20.sol:IERC20 abi > ../nextjs/contracts/IERC20.json",
+		"generate:events:AlphaBlue": "forge inspect contracts/AlphaBlue.sol:AlphaBlue events > ../nextjs/contracts/AlphaBlueEvents.json"
 	},
 	"dependencies": {
 		"dotenv": "~16.3.1",
