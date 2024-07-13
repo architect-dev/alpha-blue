@@ -30,7 +30,8 @@ const blockChainData = [
         id: 421614,
         name: "Arbitrum Sepolia",
         block_explorer_url: "https://sepolia-explorer.arbitrum.io",
-        rpc_url: "https://sepolia-explorer.arbitrum.io/api",
+        rpc_url:
+            "https://tiniest-serene-waterfall.arbitrum-sepolia.quiknode.pro/0d6e219b77ded0fdbfbd9f64e8a54f92c8989aa2/",
         chain_image_url: "https://cryptologos.cc/logos/arbitrum-arb-logo.png",
     },
 ];
@@ -77,9 +78,10 @@ export async function up(knex: Knex) {
         table.increments("id").primary();
         table.string("name", 100).notNullable();
         table.string("block_explorer_url", 100).notNullable();
-        table.string("rpc_url", 100).notNullable();
+        table.string("rpc_url", 150).notNullable();
         table.string("chain_image_url", 300).notNullable();
         table.integer("last_read_events_block").notNullable().defaultTo(0);
+        createdAtUpdatedAtRows(table, knex);
     });
 
     await knex.batchInsert(blockchainNetworkTable, blockChainData);

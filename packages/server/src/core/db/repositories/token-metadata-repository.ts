@@ -87,9 +87,9 @@ export async function getTokenMetadata(options: {
         dbTokenMetadata = dbTokenMetadatas[0];
     else throw new Error("Token metadata not found");
 
-    const blockchainNetwork = await getBlockchainNetwork(
-        dbTokenMetadata.network_id
-    );
+    const blockchainNetwork = await getBlockchainNetwork({
+        networkId: dbTokenMetadata.network_id,
+    });
 
     return tokenMetadataDbModelToTokenMetadata(
         dbTokenMetadata,

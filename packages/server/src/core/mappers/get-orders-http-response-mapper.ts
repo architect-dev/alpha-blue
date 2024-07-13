@@ -38,6 +38,7 @@ export function toGetOrdersHttpResponse(order: Order): GetOrderHttpResponse {
     return {
         id: strippedId,
         receive: potentialFillsResponse,
+        creator: order.orderWalletAddress,
         offer,
         status: order.orderStatus,
         chain: order.potentialFills.map((fill) => fill.blockchainNetwork.name),

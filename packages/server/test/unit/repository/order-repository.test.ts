@@ -18,7 +18,9 @@ let bnbBaseTokenMetadata: TokenMetadata;
 
 describe("Order Repository", () => {
     beforeAll(async () => {
-        baseBlockchainNetwork = await getBlockchainNetwork(84532);
+        baseBlockchainNetwork = await getBlockchainNetwork({
+            networkId: 84532,
+        });
         usdcBaseTokenMetadata = await getTokenMetadata({
             symbol: "USDC",
             networkId: 84532,

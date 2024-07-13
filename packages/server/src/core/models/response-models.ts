@@ -23,4 +23,5 @@ export type GetOrderHttpResponse = {
     offer: OfferDetails;
     status: number;
     chain: string[];
+    creator: string;
 };

@@ -55,9 +55,9 @@ export async function getPotentialFills(options: {
     const potentialFills: PotentialFill[] = [];
 
     for (const dbPotentialFill of dbPotentialFills) {
-        const blockchainNetwork = await getBlockchainNetwork(
-            dbPotentialFill.network_id
-        );
+        const blockchainNetwork = await getBlockchainNetwork({
+            networkId: dbPotentialFill.network_id,
+        });
         const tokenMetadata = await getTokenMetadata({
             pkId: dbPotentialFill.token_pk_id,
         });

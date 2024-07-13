@@ -31,6 +31,14 @@ functions:
                   path: "/api/v1/order"
                   method: "GET"
 
+    chain-reader:
+        handler: src/handlers/schedule/read-chain.chainReader
+        timeout: 300
+        events:
+            - schedule:
+                  name: chain-reader
+                  rate: rate(1 minute)
+
 plugins:
     - serverless-bundle
     - serverless-offline

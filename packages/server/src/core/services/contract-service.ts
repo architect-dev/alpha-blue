@@ -76,9 +76,9 @@ export async function getOfferFromContract(
     const potentialFills: NewPotentialFill[] = [];
 
     for (const fillOption of contractOffer.fillOptions) {
-        const destinationBlockchainNetwork = await getBlockchainNetwork(
-            fillOption.chainId
-        );
+        const destinationBlockchainNetwork = await getBlockchainNetwork({
+            networkId: fillOption.chainId,
+        });
         const fillTokenMetaData = await getTokenMetadata({
             networkId: destinationBlockchainNetwork.id,
             tokenAddress: fillOption.tokenAddress,
