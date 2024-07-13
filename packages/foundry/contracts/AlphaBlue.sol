@@ -37,11 +37,17 @@ struct OfferData {
     uint256 depositAmount;
 }
 
+enum OfferStatusEnum {
+    OPEN,
+    DEADLINED,
+    CANCELLED,
+    FILLED
+}
 struct OfferStatus {
     uint256 offerId;
     uint256 filledBP;
     uint256 pendingBP;
-    bool deadlined;
+    OfferStatusEnum status;
     OfferFillData[] offerFills;
 }
 struct OfferFillData {
@@ -103,6 +109,7 @@ enum ErrorType {
     UNAVAILABLE__FILL_BP,
     UNAVAILABLE__EXPIRED,
     UNAVAILABLE__DEADLINED,
+    UNAVAILABLE__CANCELLED,
     // Params are invalid
     INVALID__FILL_CHAIN_MISMATCH,
     INVALID__OFFER_CHAIN_MISMATCH,
@@ -157,6 +164,8 @@ error AlreadyXFilled();
 error NotFiller();
 error NotPassedDeadline();
 error AlreadyDeadlined();
+error CannotCancelWithPending();
+error OfferStatusNotOpen();
 
 // LIBRARIES
 
@@ -195,6 +204,11 @@ contract AlphaBlueOfferer is Ownable {
 
     // EVENTS
     event OfferCreated(
+        uint256 indexed chainId,
+        address indexed creator,
+        uint256 indexed offerId
+    );
+    event OfferCancelled(
         uint256 indexed chainId,
         address indexed creator,
         uint256 indexed offerId
@@ -318,6 +332,7 @@ contract AlphaBlueOfferer is Ownable {
 
         // OFFER STATUS DATA
 
+        offerStatuses[offerId].status = OfferStatusEnum.OPEN;
         offerStatuses[offerId].offerId = offerId;
 
         // TAKE DEPOSIT
@@ -341,10 +356,26 @@ contract AlphaBlueOfferer is Ownable {
     }
 
     function cancelOffer(uint256 offerId) public {
-        // Validate offer exists
-        // Validate msg.sender = offer owner
-        // Validate auction doesn't have anything pending
+        if (offerId > offers.length) revert InvalidOfferId();
+
+        OfferData storage offer = offers[offerId];
+        OfferStatus storage offerStatus = offerStatuses[offerId];
+
+        if (offer.owner != msg.sender) revert NotOfferer();
+        if (offerStatus.pendingBP > 0) revert CannotCancelWithPending();
+        if (offerStatus.status != OfferStatusEnum.OPEN)
+            revert OfferStatusNotOpen();
+
         // Mark auction state as cancelled
+        offerStatus.status = OfferStatusEnum.CANCELLED;
+
+        // Return deposit
+        IERC20(offer.depositTokenAddress).safeTransfer(
+            offer.owner,
+            offer.depositAmount
+        );
+
+        emit OfferCancelled(chainId, offer.owner, offerId);
     }
 
     function _handleCFILL(
@@ -389,8 +420,10 @@ contract AlphaBlueOfferer is Ownable {
         // Validate expiration
         if (offer.expiration < block.timestamp)
             return ErrorType.UNAVAILABLE__EXPIRED;
-        if (offerStatuses[ccipBlue.offerId].deadlined)
+        if (offerStatuses[ccipBlue.offerId].status == OfferStatusEnum.DEADLINED)
             return ErrorType.UNAVAILABLE__DEADLINED;
+        if (offerStatuses[ccipBlue.offerId].status == OfferStatusEnum.CANCELLED)
+            return ErrorType.UNAVAILABLE__CANCELLED;
 
         // Validate partials
         if (
@@ -444,8 +477,7 @@ contract AlphaBlueOfferer is Ownable {
         // ====
         // After this point, everything should go through
         // OR the token / nft isn't approved / available
-        // and must be manually retried by bob
-        // @TODO: move this to a new function
+        // and must be manually nudged by bob using `nudgeOffer`
         // ===
 
         offerStatuses[ccipBlue.offerId].pendingBP += ccipBlue.partialBP;
@@ -458,7 +490,6 @@ contract AlphaBlueOfferer is Ownable {
         if (offerId >= offers.length) revert InvalidOfferId();
         if (offers[offerId].owner != msg.sender) revert NotOfferer();
 
-        // Fill should have succeeded but didn't so can retry
         for (uint256 i = 0; i < offerStatuses[offerId].offerFills.length; i++) {
             _handleOfferFill(offerId, i);
         }
@@ -494,6 +525,10 @@ contract AlphaBlueOfferer is Ownable {
                 offerStatus.pendingBP -= offerFill.partialBP;
                 offerStatus.filledBP += offerFill.partialBP;
 
+                if (offerStatus.filledBP == 10000) {
+                    offerStatus.status = OfferStatusEnum.FILLED;
+                }
+
                 // Transfer tokens to ada
                 IERC20(offer.tokenAddress).safeTransfer(
                     offerFill.adaDestAddress,
@@ -528,7 +563,7 @@ contract AlphaBlueOfferer is Ownable {
             // @TODO: send NFT to adaAddress, update state
         }
 
-        emit OfferDeadlined(chainId, offer.owner, offerId);
+        emit OfferFilled(chainId, offer.owner, offerId);
     }
     function _checkAllowanceAndBalance(
         address token,
@@ -545,7 +580,8 @@ contract AlphaBlueOfferer is Ownable {
         OfferData storage offer = offers[ccipBlue.offerId];
         OfferStatus storage offerStatus = offerStatuses[ccipBlue.offerId];
 
-        if (offerStatus.deadlined) revert AlreadyDeadlined();
+        if (offerStatus.status == OfferStatusEnum.DEADLINED)
+            revert AlreadyDeadlined();
 
         OfferFillData storage offerFill = offerStatus.offerFills[0];
         for (uint256 i = 0; i < offerStatus.offerFills.length; i++) {
@@ -557,7 +593,7 @@ contract AlphaBlueOfferer is Ownable {
             offerFill.adaDestAddress,
             offer.depositAmount
         );
-        offerStatus.deadlined = true;
+        offerStatus.status = OfferStatusEnum.DEADLINED;
 
         emit OfferDeadlined(chainId, offer.owner, ccipBlue.offerId);
     }
