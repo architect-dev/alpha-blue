@@ -352,4 +352,23 @@ abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
             destAddress: address(0)
         });
     }
+
+    function _createBaseFillParams(
+        uint256 offerChain,
+        uint256 offerId,
+        address fillTokenAddress,
+        uint256 fillTokenAmount,
+        OfferData memory offerParams
+    ) internal view returns (FillParams memory fillParams) {
+        fillParams.offerChain = offerChain;
+        fillParams.offerId = offerId;
+        fillParams.offerTokenAddress = offerParams.tokenAddress;
+        fillParams.offerTokenAmount = offerParams.tokenAmount;
+        fillParams.offerNftAddress = offerParams.nftAddress;
+        fillParams.offerNftId = offerParams.nftId;
+        fillParams.fillTokenAddress = fillTokenAddress;
+        fillParams.fillTokenAmount = fillTokenAmount;
+        fillParams.adaDestAddress = address(0);
+        fillParams.partialBP = 10000;
+    }
 }

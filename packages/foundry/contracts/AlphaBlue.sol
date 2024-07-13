@@ -511,6 +511,7 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
 
         // Add offerFillData to OfferStatus
         uint256 offerFillId = offerStatuses[ccipBlue.offerId].offerFills.length;
+        fillsCount += 1;
         offerStatuses[ccipBlue.offerId].offerFills.push(
             OfferFillData({
                 fillId: ccipBlue.fillId,
@@ -542,6 +543,7 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
         if (offers[offerId].owner != msg.sender) revert NotOfferer();
 
         for (uint256 i = 0; i < offerStatuses[offerId].offerFills.length; i++) {
+            fillsCount += 1;
             _handleOfferFill(offerId, i);
         }
     }
@@ -576,8 +578,13 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
                 offerStatus.pendingBP -= offerFill.partialBP;
                 offerStatus.filledBP += offerFill.partialBP;
 
+                // Iff all BP is filled, mark offer as filled, return deposit to bob
                 if (offerStatus.filledBP == 10000) {
                     offerStatus.status = OfferStatusEnum.FILLED;
+                    IERC20(offer.depositTokenAddress).safeTransfer(
+                        offer.owner,
+                        offer.depositAmount
+                    );
                 }
 
                 // Transfer tokens to ada
@@ -589,7 +596,9 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
                 _sendCCIP(
                     CCIPBlue({
                         messageType: MessageType.CXFILL,
-                        bobDestAddress: offerFill.bobDestAddress,
+                        bobDestAddress: offerFill.bobDestAddress == address(0)
+                            ? offer.owner
+                            : offerFill.bobDestAddress,
                         adaDestAddress: address(0),
                         offerId: offerId,
                         offerChain: chainId,
@@ -636,6 +645,7 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
 
         OfferFillData storage offerFill = offerStatus.offerFills[0];
         for (uint256 i = 0; i < offerStatus.offerFills.length; i++) {
+            fillsCount += 1;
             if (offerStatus.offerFills[i].fillId != ccipBlue.fillId) continue;
             offerFill = offerStatus.offerFills[i];
         }
@@ -665,7 +675,8 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
     //
     //
 
-    FillData[] public fills;
+    uint256 public fillsCount = 0;
+    mapping(uint256 => FillData) public fills;
 
     function createFill(FillParams calldata params) public {
         // Validate fill token
@@ -686,21 +697,24 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
         );
 
         // Create fill data
-        uint256 fillId = fills.length;
+        uint256 fillId = fillsCount;
+        fillsCount += 1;
         FillData storage fill = fills[fillId];
 
         fill.offerChain = params.offerChain;
         fill.offerId = params.offerId;
         fill.fillTokenAddress = params.fillTokenAddress;
         fill.fillTokenAmount = params.fillTokenAmount;
-        fill.adaDestAddress = params.adaDestAddress;
+        fill.adaDestAddress = params.adaDestAddress == address(0)
+            ? msg.sender
+            : params.adaDestAddress;
         fill.deadline = block.timestamp + 1 days;
 
         _sendCCIP(
             CCIPBlue({
                 messageType: MessageType.CFILL,
                 bobDestAddress: address(0),
-                adaDestAddress: params.adaDestAddress,
+                adaDestAddress: fill.adaDestAddress,
                 offerChain: params.offerChain,
                 offerId: params.offerId,
                 fillChain: chainId,
@@ -757,7 +771,8 @@ contract AlphaBlue is Ownable, AlphaBlueEvents {
     }
 
     function triggerDeadline(uint256 fillId) public {
-        if (fillId >= fills.length) revert InvalidFillId();
+        if (fillId >= fillsCount) revert InvalidFillId();
+        fillsCount += 1;
 
         FillData storage fill = fills[fillId];
         if (fill.owner != msg.sender) revert NotFiller();

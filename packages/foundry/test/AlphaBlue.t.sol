@@ -141,4 +141,46 @@ contract AlphaBlueTest is AlphaBlueBase {
         vm.prank(user1);
         alphaBlueArb.cancelOffer(offerId);
     }
+
+    function test_fillOffer() public {
+        vm.prank(user1);
+        WETH.approve(address(alphaBlueArb), type(uint256).max);
+
+        OfferData memory offerParams = _createBaseOfferParams();
+
+        vm.prank(user1);
+        uint256 offerId = alphaBlueArb.createOffer(offerParams);
+
+        vm.prank(user2);
+        USDC.approve(address(alphaBlueArb), type(uint256).max);
+
+        // Ada pays for fill
+        _expectTokenTransfer(USDC, user2, address(alphaBlueArb), 3000e6);
+        // Bob pays for offer
+        _expectTokenTransfer(WETH, user1, address(alphaBlueArb), 1e18);
+        // Bob refunded deposit
+        _expectTokenTransfer(WETH, address(alphaBlueArb), user1, 0.01e18);
+        // Ada receives offer on other side of bridge
+        _expectTokenTransfer(WETH, address(alphaBlueArb), user2, 1e18);
+        // Bob receives fill on other side of bridge
+        _expectTokenTransfer(USDC, address(alphaBlueArb), user1, 3000e6);
+
+        FillParams memory fillParams = _createBaseFillParams(
+            arbChainId,
+            offerId,
+            address(USDC),
+            3000e6,
+            offerParams
+        );
+
+        vm.prank(user2);
+        alphaBlueArb.createFill(fillParams);
+
+        OfferStatus memory offerStatus = alphaBlueArb.getOfferStatus(offerId);
+        assertEq(
+            offerStatus.status == OfferStatusEnum.FILLED,
+            true,
+            "Offer filled"
+        );
+    }
 }
