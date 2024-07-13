@@ -3,8 +3,12 @@ pragma solidity ^0.8.20;
 
 // @TODO: Remove
 import "forge-std/console.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IRouterClient} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IRouterClient.sol"; // Allows us to send CCIP messages
+import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
+import {CCIPReceiver} from "@chainlink/contracts-ccip/src/v0.8/ccip/applications/CCIPReceiver.sol"; // Allows us to receive CCIP messages
+
 
 // STRUCTS / EVENTS / ERRORS
 
@@ -14,7 +18,7 @@ struct FillOption {
     uint256 chainId;
     address tokenAddress;
     uint256 tokenAmount;
-    uint256 destAddress;
+    address destAddress;
 }
 
 struct OfferData {
@@ -162,12 +166,14 @@ library QuikMaff {
 
 // MAIN CONTRACT
 
-contract AlphaBlueOfferer is Ownable {
+contract AlphaBlueOfferer is Ownable, CCIPReceiver {
     using QuikMaff for uint256;
     using SafeERC20 for IERC20;
 
     // State Variables
     uint256 public immutable chainId;
+    IRouterClient public immutable router; // chainlink ccip router
+    IERC20 public immutable linkToken;
     mapping(uint256 => bool) public availableChains;
     mapping(uint256 => mapping(address => bool)) public availableChainTokens;
     // TODO: Set available chains function
@@ -184,8 +190,10 @@ contract AlphaBlueOfferer is Ownable {
 
     // ADMIN ACTIONS
 
-    constructor(uint256 _chainId) Ownable(msg.sender) {
+    constructor(uint256 _chainId, address _router, address _link) Ownable(msg.sender) CCIPReceiver(_router) {
         chainId = _chainId;
+        router = IRouterClient(_router);
+        linkToken = IERC20(_link);
     }
 
     function setChainsAndTokens() public onlyOwner {}
@@ -573,10 +581,10 @@ contract AlphaBlueOfferer is Ownable {
     function _sendCFILL() internal {
         // Encode and send CFILL
     }
-    function _handleCXFILL() internal {
+    function _handleCXFILL(uint256 offerChainId, CCIPBlue memory ccipBlue) internal {
         // _handleCXFILL
     }
-    function _handleCINVALID() internal {
+    function _handleCINVALID(uint256 offerChainId, CCIPBlue memory ccipBlue) internal {
         // _handleCINVALID
     }
     function _handleCUNAVAILABLE() internal {
@@ -602,31 +610,28 @@ contract AlphaBlueOfferer is Ownable {
     function _sendCCIP(CCIPBlue memory ccipBlue) internal {
         // Same chain swap
         if (ccipBlue.offerChain == ccipBlue.fillChain) {
-            receiveCCIP(ccipBlue);
+            _ccipReceive(ccipBlue);
         }
 
         // Multi chain swap, mocking with simple contract call
         // @TODO
     }
 
-    function receiveCCIP(CCIPBlue memory ccipBlue) public {
+    function _ccipReceive(Client.Any2EVMMessage memory any2EvmMessage) internal override {
         // Decode CCIP using CCPIBlue struct
         // Using message type, branch to functions
-
-        MessageType messageType = MessageType.CFILL;
+        CCIPBlue memory ccipBlue = abi.decode(any2EvmMessage.data, (CCIPBlue));
 
         // 0 = CFILL - Fill has been called, tell offer that fill is available, distribute offerToken / offerNft
         // 1 = CXFILL - Offer has agreed to fill, tell fill that it can distribute fillToken
         // 2 = CINVALID - data sent with fill doesn't match order
         // 3 = CUNAVAILABLE - offer no longer available
-        if (messageType == MessageType.CFILL) {
-            _handleCFILL(chainId, ccipBlue);
-        }
-        if (messageType == MessageType.CXFILL) {
-            // Route to fill function _handleCXFILL()
-        }
-        if (messageType == MessageType.CINVALID) {
-            // Route to fill function _handleCINVALID()
+        if (ccipBlue.messageType == MessageType.CFILL) {
+            _handleCFILL(any2EvmMessage.sourceChainSelector, ccipBlue);
+        } else if (ccipBlue.messageType == MessageType.CXFILL) {
+            _handleCXFILL(any2EvmMessage.sourceChainSelector, ccipBlue);
+        } else (ccipBlue.messageType == MessageType.CINVALID) {
+            _handleCINVALID(any2EvmMessage.sourceChainSelector, ccipBlue);
         }
     }
 }
