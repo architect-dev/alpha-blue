@@ -804,7 +804,11 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
     //
 
     function _sendCCIP(CCIPBlue memory ccipBlue) internal {
-        console.log("Starting _sendCCIP");
+        console.log(
+            "Starting _sendCCIP",
+            ccipBlue.offerChain,
+            ccipBlue.fillChain
+        );
         // Same chain message
         if (ccipBlue.offerChain == ccipBlue.fillChain) {
             Client.Any2EVMMessage memory sameChainMessage = Client
@@ -856,17 +860,35 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
     ) internal override {
         CCIPBlue memory ccipBlue = abi.decode(any2EvmMessage.data, (CCIPBlue));
 
+        console.log(
+            "ccipReceive",
+            uint256(ccipBlue.messageType),
+            uint256(any2EvmMessage.sourceChainSelector)
+        );
+
         if (ccipBlue.messageType == MessageType.CFILL) {
-            _handleCFILL(any2EvmMessage.sourceChainSelector, ccipBlue);
+            _handleCFILL(
+                _getReverseChainSelector(any2EvmMessage.sourceChainSelector),
+                ccipBlue
+            );
         }
         if (ccipBlue.messageType == MessageType.CXFILL) {
-            _handleCXFILL(any2EvmMessage.sourceChainSelector, ccipBlue);
+            _handleCXFILL(
+                _getReverseChainSelector(any2EvmMessage.sourceChainSelector),
+                ccipBlue
+            );
         }
         if (ccipBlue.messageType == MessageType.CINVALID) {
-            _handleCINVALID(any2EvmMessage.sourceChainSelector, ccipBlue);
+            _handleCINVALID(
+                _getReverseChainSelector(any2EvmMessage.sourceChainSelector),
+                ccipBlue
+            );
         }
         if (ccipBlue.messageType == MessageType.CDEADLINE) {
-            _handleCDEADLINE(any2EvmMessage.sourceChainSelector, ccipBlue);
+            _handleCDEADLINE(
+                _getReverseChainSelector(any2EvmMessage.sourceChainSelector),
+                ccipBlue
+            );
         }
     }
 
@@ -880,6 +902,19 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
         if (_chainId == 80002) return 16281711391670634445; // Polygon Amoy
         if (_chainId == 43113) return 14767482510784806043; // Avalanche Fuji
         if (_chainId == 421614) return 3478487238524512106; // Arbitrum Sepolia
+
+        revert UnsupportedChainId();
+    }
+
+    function _getReverseChainSelector(
+        uint64 _selector
+    ) internal pure returns (uint256) {
+        if (_selector == 16015286601757825753) return 5; // Ethereum Sepolia
+        if (_selector == 10344971235874465080) return 84532; // Base Sepolia
+        if (_selector == 3552045678561919002) return 44787; // Celo Alfajores
+        if (_selector == 16281711391670634445) return 80002; // Polygon Amoy
+        if (_selector == 14767482510784806043) return 43113; // Avalanche Fuji
+        if (_selector == 3478487238524512106) return 421614; // Arbitrum Sepolia
 
         revert UnsupportedChainId();
     }
