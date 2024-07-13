@@ -7,6 +7,7 @@ import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeE
 import "./AlphaBlueEvents.sol";
 import {IRouterClient} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IRouterClient.sol"; // Allows us to send CCIP messages
 import {CCIPReceiver, Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/applications/CCIPReceiver.sol"; // Allows us to receive CCIP messages
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 // STRUCTS / EVENTS / ERRORS
 
@@ -185,6 +186,8 @@ error CannotCancelWithPending();
 error OfferStatusNotOpen();
 error UnsupportedChainId();
 error InsufficientLinkBalance();
+error NftTransferNotApproved();
+error NftTransferFailed();
 
 // LIBRARIES
 
@@ -568,9 +571,57 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
             }
         }
 
-        // If offer is NFT
-        if (offer.nftAddress != address(0)) {
-            // @TODO: send NFT to adaAddress, update state
+    // If offer is NFT
+    if (offer.nftAddress != address(0)) {
+        IERC721 nft = IERC721(offer.nftAddress);
+        
+        // Check NFT approval
+        if (nft.getApproved(offer.nftId) != address(this) && 
+            !nft.isApprovedForAll(offer.owner, address(this))) {
+            revert NftTransferNotApproved();
+        }
+
+        if (offerFill.partialBP != 10000) {
+            revert InvalidPartialFill();
+        }
+
+        try nft.transferFrom(offer.owner, offerFill.adaDestAddress, offer.nftId) {
+            offerFill.pending = false;
+            offer.filledBP = 10000; // 100% filled
+            offer.status = OfferStatus.FILLED;
+
+            // Return the WETH stake deposit
+            IERC20(offer.depositTokenAddress).safeTransfer(
+                offer.owner,
+                offer.depositAmount
+            );
+
+            _sendCCIP(
+                CCIPBlue({
+                    messageType: MessageType.CXFILL,
+                    bobDestAddress: offerFill.bobDestAddress == address(0)
+                        ? offer.owner
+                        : offerFill.bobDestAddress,
+                    adaDestAddress: address(0),
+                    offerId: offerId,
+                    offerChain: chainId,
+                    fillId: offerFill.fillId,
+                    fillChain: offerFill.fillChain,
+                    offerTokenAddress: address(0),
+                    offerTokenAmount: 0,
+                    offerNftAddress: offer.nftAddress,
+                    offerNftId: offer.nftId,
+                    fillTokenAddress: address(0),
+                    fillTokenAmount: 0,
+                    partialBP: 10000, // Always 100% for NFTs
+                    deadline: 0,
+                    errorType: ErrorType.NONE
+                })
+            );
+        } catch {
+            revert NftTransferFailed();
+        }
+
         }
 
         emit OfferFilled(chainId, offer.owner, offerId);
