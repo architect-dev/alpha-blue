@@ -1,6 +1,5 @@
 import { Knex } from "knex";
 import { DatabaseManager } from "src/core/db/db-manager";
-import { getBlockchainNetwork } from "src/core/db/repositories/blockchain-repository";
 import { getTokenMetadata } from "src/core/db/repositories/token-metadata-repository";
 import {
     newPotentialFillToPotentialFillDbModel,
@@ -52,25 +51,18 @@ export async function getPotentialFills(options: {
             pkId: options?.pkId,
         })
         .modify(withOrderPkId, {
-            pkId: options?.orderPkId,
+            orderPkId: options?.orderPkId,
         });
 
     const potentialFills: PotentialFill[] = [];
 
     for (const dbPotentialFill of dbPotentialFills) {
-        const blockchainNetwork = await getBlockchainNetwork({
-            networkId: dbPotentialFill.network_id,
-        });
         const tokenMetadata = await getTokenMetadata({
             pkId: dbPotentialFill.token_pk_id,
         });
 
         potentialFills.push(
-            potentialFillDbModelToPotentialFill(
-                dbPotentialFill,
-                blockchainNetwork,
-                tokenMetadata
-            )
+            potentialFillDbModelToPotentialFill(dbPotentialFill, tokenMetadata)
         );
     }
 

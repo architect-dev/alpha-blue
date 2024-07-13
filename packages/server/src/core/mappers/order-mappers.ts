@@ -1,6 +1,5 @@
 import { OrderDbModel } from "src/core/models/db-models";
 import {
-    BlockchainNetwork,
     FillHistory,
     NewOrder,
     Order,
@@ -11,7 +10,6 @@ import { dateStringToEpochSeconds } from "src/core/utils/dates";
 
 export function orderDbModelToOrder(
     orderDbModel: OrderDbModel,
-    blockchainNetwork: BlockchainNetwork,
     tokenMetadata: TokenMetadata,
     potentialFills: PotentialFill[],
     fillHistory: FillHistory[]
@@ -28,7 +26,7 @@ export function orderDbModelToOrder(
         orderStatus: orderDbModel.order_status,
         orderDate: orderDbModel.order_date,
         filledDate: orderDbModel.filled_date,
-        blockchainNetwork: blockchainNetwork,
+        blockchainNetwork: tokenMetadata.blockchainNetwork,
         tokenMetadata: tokenMetadata,
         tokenAmount: orderDbModel.token_amount,
         expirationDate: orderDbModel.expiration_date,

@@ -58,4 +58,11 @@ export class DatabaseManager {
         }
         return this.instance;
     }
+
+    public static async destroyInstance() {
+        if (this.instance) {
+            await this.instance.destroy();
+        }
+        this.definedInstance = false;
+    }
 }

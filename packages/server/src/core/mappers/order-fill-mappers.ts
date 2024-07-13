@@ -3,7 +3,6 @@ import {
     PotentialFillDbModel,
 } from "src/core/models/db-models";
 import {
-    BlockchainNetwork,
     FillHistory,
     NewFillHistory,
     NewPotentialFill,
@@ -14,7 +13,6 @@ import { dateStringToEpochSeconds } from "src/core/utils/dates";
 
 export function potentialFillDbModelToPotentialFill(
     potentialFillDbModel: PotentialFillDbModel,
-    blockchainNetwork: BlockchainNetwork,
     tokenMetadata: TokenMetadata
 ): PotentialFill {
     return {
@@ -22,7 +20,7 @@ export function potentialFillDbModelToPotentialFill(
         orderPkId: potentialFillDbModel.order_pk_id,
         destinationWalletAddress:
             potentialFillDbModel.destination_wallet_address,
-        blockchainNetwork: blockchainNetwork,
+        blockchainNetwork: tokenMetadata.blockchainNetwork,
         tokenMetadata: tokenMetadata,
         tokenAmount: potentialFillDbModel.token_amount,
         active: potentialFillDbModel.active,
@@ -47,7 +45,6 @@ export function newPotentialFillToPotentialFillDbModel(
 
 export function fillHistoryDbModelToFillHistory(
     fillHistoryDbModel: FillHistoryDbModel,
-    blockchainNetwork: BlockchainNetwork,
     tokenMetadata: TokenMetadata
 ): FillHistory {
     return {
@@ -55,7 +52,7 @@ export function fillHistoryDbModelToFillHistory(
         orderPkId: fillHistoryDbModel.order_pk_id,
         fillId: fillHistoryDbModel.fill_id,
         fillWalletAddress: fillHistoryDbModel.fill_wallet_address,
-        blockchainNetwork: blockchainNetwork,
+        blockchainNetwork: tokenMetadata.blockchainNetwork,
         tokenMetadata: tokenMetadata,
         tokenAmount: fillHistoryDbModel.token_amount,
         fillStatus: fillHistoryDbModel.fill_status,

@@ -19,7 +19,7 @@ let usdcBaseTokenMetadata: TokenMetadata;
 let bnbBaseTokenMetadata: TokenMetadata;
 
 describe("Order Repository", () => {
-    beforeAll(async () => {
+    test("should get order by pkId", async () => {
         baseBlockchainNetwork = await getBlockchainNetwork({
             networkId: 84532,
         });
@@ -32,9 +32,7 @@ describe("Order Repository", () => {
             symbol: "BNB",
             networkId: 84532,
         });
-    });
 
-    test("should get order by pkId", async () => {
         const walletAddress = generateWalletAddress();
         const orderNumber = randomNumber();
         const newOrder: NewOrder = {

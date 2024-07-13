@@ -105,11 +105,13 @@ export async function getTopicAddress(blockchain: BlockchainNetwork) {
     const eventTopicNameToTopic: Record<string, string> = {};
 
     for (const eventName of eventNames) {
+        console.log("🚀 ~ getTopicAddress ~ eventName:", eventName);
         const filterFn = contract.contract.filters[eventName];
         if (!filterFn) {
             throw new Error(`Contract is missing ${eventName} event in ABI`);
         }
         const topics = await filterFn().getTopicFilter();
+        console.log("🚀 ~ getTopicAddress ~ topics:", topics);
 
         if (topics && topics[0]) {
             let topicAddress: string;
@@ -249,10 +251,12 @@ export async function readChainEvents(blockchain: BlockchainNetwork) {
         lastBlock,
         eventTopics
     );
+    console.log("🚀 ~ readChainEvents ~ eventLogs:", eventLogs);
 
     const eventModels: BaseEventModel[] = [];
 
     for (const eventLog of eventLogs) {
+        console.log("🚀 ~ readChainEvents ~ eventLog:", eventLog);
         const eventTopic = eventLog.topics[0];
         const eventName = eventTopicNameToTopic[eventTopic];
 
@@ -261,6 +265,10 @@ export async function readChainEvents(blockchain: BlockchainNetwork) {
             contract.parseEventLogs(eventLog, blockchain.id)?.args
         ) {
             const EventModelType = eventToModelType[eventName];
+            console.log(
+                "🚀 ~ readChainEvents ~ EventModelType:",
+                EventModelType
+            );
 
             if (!EventModelType) {
                 throw new Error(
@@ -275,6 +283,10 @@ export async function readChainEvents(blockchain: BlockchainNetwork) {
                     ?.args,
                 eventName,
             };
+            console.log(
+                "🚀 ~ readChainEvents ~ notificationEvent:",
+                notificationEvent
+            );
 
             const eventModel = new EventModelType(
                 notificationEvent,

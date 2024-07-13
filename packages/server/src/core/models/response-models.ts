@@ -28,10 +28,11 @@ export type OfferDetails = {
     tokenDetails: TokenDetails;
     pendingBasisPoints: number;
     filledBasisPoints: number;
+    partialFill: boolean;
     orderStatus: number;
 };
 export type GetOrderHttpResponse = {
-    id: number;
+    id: string;
     receive: PossibleOrderFill[];
     fillHistory: OrderFillHistory[];
     offer: OfferDetails;
