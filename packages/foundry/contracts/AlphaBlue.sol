@@ -161,6 +161,8 @@ error AlreadyXFilled();
 error NotFiller();
 error NotPassedDeadline();
 error AlreadyDeadlined();
+error UnsupportedChainId();
+error InsufficientLinkBalance();
 
 // LIBRARIES
 
@@ -738,29 +740,44 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
     //
 
     function _sendCCIP(CCIPBlue memory ccipBlue) internal {
-        // Same chain swap
+        // Same chain message
         if (ccipBlue.offerChain == ccipBlue.fillChain) {
-            _ccipReceive(ccipBlue);
-        }
+            Client.Any2EVMMessage memory sameChainMessage = Client.Any2EVMMessage({
+                messageId: bytes32(0), // No messageId
+                sourceChainSelector: uint64(_getChainSelector(ccipBlue.offerChain)),
+                sender: abi.encode(address(this)),
+                data: abi.encode(ccipBlue),
+                destTokenAmounts: new Client.EVMTokenAmount[](0) // Sending no tokens directly
+            });
 
-        // Multi chain swap, mocking with simple contract call
-        // @TODO
+            _ccipReceive(sameChainMessage);
+            return;
+        } 
+        // Cross chain message
+        bytes memory payload = abi.encode(ccipBlue);
+        uint64 destinationChainSelector = _getChainSelector(ccipBlue.offerChain);
+        
+        Client.EVM2AnyMessage memory xcMessage = Client.EVM2AnyMessage({
+            receiver: abi.encode(address(this)), // This assumes the contract address is the same on all chains, would require an omnichain deployment via CREATE2
+            data: payload,
+            tokenAmounts: new Client.EVMTokenAmount[](0), // Sending no tokens directly
+            feeToken: address(linkToken),
+            extraArgs: Client._argsToBytes(Client.EVMExtraArgsV1({gasLimit: 200000}))
+        });
+
+
+        uint256 fee = router.getFee(destinationChainSelector, xcMessage);
+        if (linkToken.balanceOf(address(this)) < fee) revert InsufficientLinkBalance();
+        linkToken.approve(address(router), fee);
+
+        router.ccipSend(destinationChainSelector, xcMessage);
+        
+        // emit event
+        
     }
 
     function _ccipReceive(Client.Any2EVMMessage memory any2EvmMessage) internal override {
         CCIPBlue memory ccipBlue = abi.decode(any2EvmMessage.data, (CCIPBlue));
-
-        // if (ccipBlue.messageType == MessageType.CFILL) {
-        //     _handleCFILL(chainId, ccipBlue);
-        // }
-        // if (ccipBlue.messageType == MessageType.CXFILL) {
-        //     _handleCXFILL(chainId, ccipBlue);
-        // }
-        // if (ccipBlue.messageType == MessageType.CINVALID) {
-        //     _handleCINVALID(chainId, ccipBlue);
-        // }
-        // if (ccipBlue.messageType == MessageType.CDEADLINE) {
-        //     _handleCDEADLINE(chainId, ccipBlue);
 
         if (ccipBlue.messageType == MessageType.CFILL) {
             _handleCFILL(any2EvmMessage.sourceChainSelector, ccipBlue);
@@ -774,5 +791,17 @@ contract AlphaBlueOfferer is Ownable, CCIPReceiver {
         if (ccipBlue.messageType == MessageType.CDEADLINE) {
             _handleCDEADLINE(any2EvmMessage.sourceChainSelector, ccipBlue);
         }
+    }
+
+    /// @dev values from https://docs.chain.link/ccip/supported-networks/v1_2_0/testnet#overview
+    function _getChainSelector(uint256 _chainId) internal pure returns (uint64) {
+
+        if (_chainId == 5) return 16015286601757825753;  // Ethereum Sepolia
+        if (_chainId == 84532) return 10344971235874465080; // Base Sepolia
+        if (_chainId == 80002) return 16281711391670634445;  // Polygon Amoy
+        if (_chainId == 43113) return 14767482510784806043;  // Avalanche Fuji
+        if (_chainId == 421614) return 3478487238524512106;  // Arbitrum Sepolia
+        
+        revert UnsupportedChainId();
     }
 }
