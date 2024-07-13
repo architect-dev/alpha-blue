@@ -1,5 +1,3 @@
-import { EventLog } from "ethers";
-
 export enum OrderStatus {
     "Active" = 1,
     "Filled" = 2,
@@ -82,7 +80,7 @@ export type PotentialFill = {
 
 export type NewPotentialFill = Omit<
     PotentialFill,
-    "pkId" | "updatedAt" | "createdAt"
+    "pkId" | "updatedAt" | "createdAt" | "orderPkId"
 >;
 
 export type FillHistory = {
@@ -104,22 +102,3 @@ export type NewFillHistory = Omit<
     FillHistory,
     "pkId" | "updatedAt" | "createdAt"
 >;
-
-export type TransactionResponse = {
-    blockNumber: number;
-    from: string;
-    success: boolean;
-    to: string;
-};
-
-export type CurrentBlockResponse = {
-    result: string;
-    id: number;
-};
-
-export type ContractLogResponse = {
-    from: string;
-    logs: EventLog[];
-    timeStamp: number;
-    to: string;
-};

@@ -4,8 +4,8 @@ import {
     readChainEvents,
 } from "src/core/services/blockchain-service";
 
-export async function createOrder(req: any) {
-    console.log("Creating order", req.body);
+export async function refreshOrder(req: any) {
+    console.log("Refreshing order with ", req.body);
     const txId: string = req.body?.txId || "";
     const networkId: number = req.body?.networkId || 0;
     const blockchainNetwork = await getBlockchainNetwork(networkId);
@@ -16,9 +16,4 @@ export async function createOrder(req: any) {
     );
 
     await readChainEvents(blockchainNetwork, chainTransactionDetails.to);
-
-    return Promise.resolve({
-        status: "success",
-        message: "Order created successfully",
-    });
 }

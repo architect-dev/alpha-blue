@@ -1,3 +1,4 @@
+import { Knex } from "knex";
 import { DatabaseManager } from "src/core/db/db-manager";
 import { getBlockchainNetwork } from "src/core/db/repositories/blockchain-repository";
 import { getFillHistory } from "src/core/db/repositories/fill-history-repository";
@@ -15,38 +16,111 @@ import { NewOrder, Order } from "src/core/models/domain-models";
 
 const orderTable = "order";
 
-export async function getOrder(orderPkId: number): Promise<Order | undefined> {
+const withNetworkId = (
+    queryBuilder: Knex.QueryBuilder,
+    options: {
+        networkId?: number;
+    }
+) => {
+    if (options.networkId) {
+        void queryBuilder.where(`${orderTable}.network_id`, options.networkId);
+    }
+};
+
+const withPkId = (
+    queryBuilder: Knex.QueryBuilder,
+    options: {
+        pkId?: number;
+    }
+) => {
+    if (options.pkId) {
+        void queryBuilder.where(`${orderTable}.pk_id`, options.pkId);
+    }
+};
+
+const withId = (
+    queryBuilder: Knex.QueryBuilder,
+    options: {
+        orderId?: string;
+    }
+) => {
+    if (options.orderId) {
+        void queryBuilder.where(`${orderTable}.order_id`, options.orderId);
+    }
+};
+
+export async function getOrders(options: {
+    pkId?: number;
+    orderId?: string;
+    networkId?: number;
+}): Promise<Order[]> {
     const databaseConnection = DatabaseManager.getInstance();
 
     const dbOrders = await databaseConnection
         .select<OrderDbModel[]>()
         .from(orderTable)
-        .where("pk_id", orderPkId);
+        .modify(withPkId, {
+            pkId: options?.pkId,
+        })
+        .modify(withId, {
+            orderId: options?.orderId,
+        })
+        .modify(withNetworkId, {
+            networkId: options?.networkId,
+        });
 
-    let dbOrder: OrderDbModel;
+    const orders: Order[] = [];
 
-    if (dbOrders && dbOrders.length == 1) dbOrder = dbOrders[0];
-    else return undefined;
+    for (const dbOrder of dbOrders) {
+        const blockchainNetwork = await getBlockchainNetwork(
+            dbOrder.network_id
+        );
+        const tokenMetadata = await getTokenMetadata({
+            pkId: dbOrder.token_pk_id,
+        });
+        const potentialFills = await getPotentialFills({
+            pkId: options?.pkId,
+        });
+        const orderFills = await getFillHistory(options?.pkId || 0);
 
-    const blockchainNetwork = await getBlockchainNetwork(dbOrder.network_id);
-    const tokenMetadata = await getTokenMetadata({
-        pkId: dbOrder.token_pk_id,
-    });
-    const potentialFills = await getPotentialFills({ pkId: orderPkId });
-    const orderFills = await getFillHistory(orderPkId);
+        orders.push(
+            orderDbModelToOrder(
+                dbOrder,
+                blockchainNetwork,
+                tokenMetadata,
+                potentialFills,
+                orderFills
+            )
+        );
+    }
 
-    return orderDbModelToOrder(
-        dbOrder,
-        blockchainNetwork,
-        tokenMetadata,
-        potentialFills,
-        orderFills
-    );
+    return orders;
 }
 
-export async function insertNewOrder(
-    newOrder: NewOrder
-): Promise<Order | undefined> {
+export async function getOrder(options: {
+    pkId?: number;
+    orderId?: string;
+    networkId?: number;
+}): Promise<Order> {
+    const newOrders = await getOrders(options);
+
+    if (newOrders.length != 1)
+        throw new Error(
+            `Expected 1 order to be returned, but got ${newOrders.length}`
+        );
+    else return newOrders[0];
+}
+
+export async function fetchOrder(options: {
+    orderId?: string;
+    networkId?: number;
+}): Promise<Order | undefined> {
+    const orders = await getOrders(options);
+
+    return orders[0] || undefined;
+}
+
+export async function insertNewOrder(newOrder: NewOrder): Promise<Order> {
     const knex = DatabaseManager.getInstance();
 
     const orderDbAttributes = newOrderToOrderDbModel(newOrder);
@@ -57,5 +131,5 @@ export async function insertNewOrder(
         await insertPotentialFill(newPotentialFill, insertedPkId[0]);
     });
 
-    return await getOrder(insertedPkId[0]);
+    return await getOrder({ pkId: insertedPkId[0] });
 }
