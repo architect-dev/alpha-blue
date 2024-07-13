@@ -2,7 +2,6 @@
 pragma solidity ^0.8.20;
 
 // @TODO: Remove
-import "forge-std/console.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./AlphaBlueEvents.sol";
@@ -804,11 +803,6 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
     //
 
     function _sendCCIP(CCIPBlue memory ccipBlue) internal {
-        console.log(
-            "Starting _sendCCIP",
-            ccipBlue.offerChain,
-            ccipBlue.fillChain
-        );
         // Same chain message
         if (ccipBlue.offerChain == ccipBlue.fillChain) {
             Client.Any2EVMMessage memory sameChainMessage = Client
@@ -853,9 +847,6 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
         linkToken.approve(address(router), fee);
 
         router.ccipSend(destinationChainSelector, xcMessage);
-
-        // emit event
-        console.log("Ending _sendCCIP");
     }
 
     function _getCCIPReceiver(
@@ -878,13 +869,6 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
     ) internal override {
         CCIPBlue memory ccipBlue = abi.decode(any2EvmMessage.data, (CCIPBlue));
 
-        console.log(
-            "ccipReceive",
-            uint256(ccipBlue.messageType),
-            uint256(MessageType.CXFILL),
-            uint256(any2EvmMessage.sourceChainSelector)
-        );
-
         if (ccipBlue.messageType == MessageType.CFILL) {
             _handleCFILL(
                 _getReverseChainSelector(any2EvmMessage.sourceChainSelector),
@@ -896,7 +880,6 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
                 ccipBlue
             );
         } else if (ccipBlue.messageType == MessageType.CINVALID) {
-            console.log("INVALID", uint256(ccipBlue.errorType));
             _handleCINVALID(
                 _getReverseChainSelector(any2EvmMessage.sourceChainSelector),
                 ccipBlue
