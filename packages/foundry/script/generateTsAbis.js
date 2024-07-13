@@ -126,6 +126,17 @@ function main() {
 			}
 		)
 	)
+
+	const JSON_DIR = './script/'
+	if (!fs.existsSync(JSON_DIR)) {
+		fs.mkdirSync(JSON_DIR)
+	}
+	fs.writeFileSync(
+		`${JSON_DIR}deployedContracts.json`,
+		prettier.format(`{${fileContent}}`, {
+			parser: 'json',
+		})
+	)
 }
 
 try {

@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "./contract";
 const deployedContracts = {
   31337: {
     WETH: {
-      address: "0xCace1b78160AE76398F486c8a18044da0d66d86D",
+      address: "0x5bf5b11053e734690269C6B9D438F8C9d48F528A",
       abi: [
         {
           type: "constructor",
@@ -738,7 +738,7 @@ const deployedContracts = {
       inheritedFunctions: {},
     },
     WBTC: {
-      address: "0xD5ac451B0c50B9476107823Af206eD814a2e2580",
+      address: "0xffa7CA1AEEEbBc30C874d32C7e22F052BbEa0429",
       abi: [
         {
           type: "constructor",
@@ -1469,7 +1469,7 @@ const deployedContracts = {
       inheritedFunctions: {},
     },
     USDC: {
-      address: "0xF8e31cb472bc70500f08Cd84917E5A1912Ec8397",
+      address: "0x3aAde2dCD2Df6a8cAc689EE797591b2913658659",
       abi: [
         {
           type: "constructor",
@@ -2200,7 +2200,7 @@ const deployedContracts = {
       inheritedFunctions: {},
     },
     BNB: {
-      address: "0xc0F115A19107322cFBf1cDBC7ea011C19EbDB4F8",
+      address: "0xab16A69A5a8c12C732e0DEFF4BE56A70bb64c926",
       abi: [
         {
           type: "constructor",
@@ -2931,7 +2931,7 @@ const deployedContracts = {
       inheritedFunctions: {},
     },
     MOCC: {
-      address: "0xc96304e3c037f81dA488ed9dEa1D8F2a48278a75",
+      address: "0xE3011A37A904aB90C8881a99BD1F6E21401f1522",
       abi: [
         {
           type: "constructor",
@@ -3675,7 +3675,7 @@ const deployedContracts = {
       inheritedFunctions: {},
     },
     alphaBlue: {
-      address: "0x34B40BA116d5Dec75548a9e9A8f15411461E8c70",
+      address: "0x1f10F3Ba7ACB61b2F50B9d6DdCf91a6f787C0E82",
       abi: [
         {
           type: "constructor",
