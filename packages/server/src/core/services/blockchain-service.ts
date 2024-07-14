@@ -131,6 +131,17 @@ export async function getEventLogs(
     endBlock: number,
     topicAddresses: string[]
 ) {
+    let firstBlock: number;
+
+    if (
+        blockchain.lastReadEventsBlock == 0 ||
+        endBlock - blockchain.lastReadEventsBlock > 1000
+    ) {
+        firstBlock = endBlock - 5000;
+    } else {
+        firstBlock = blockchain.lastReadEventsBlock + 1;
+    }
+
     if (blockchain.id == 421614 || blockchain.id == 80002) {
         const provider = new ethers.JsonRpcProvider(blockchain.rpcUrl);
         const topicSize = 4;
