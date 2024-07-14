@@ -34,7 +34,19 @@ export class ContractWrapper {
     }
     public getAddressAbi(networkId: number) {
         const normalizedNetworkId =
-            networkId == 31337 ? 31337 : networkId == 84532 ? 84532 : 31337;
+            networkId == 31337
+                ? 31337
+                : networkId == 84532
+                ? 84532
+                : networkId == 44787
+                ? 44787
+                : networkId == 80002
+                ? 80002
+                : networkId == 8453
+                ? 8453
+                : networkId == 421614
+                ? 421614
+                : 31337;
 
         const abi = deployedContracts[normalizedNetworkId].alphaBlue.abi;
         const address =

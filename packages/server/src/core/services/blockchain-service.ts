@@ -28,6 +28,7 @@ import {
     updateFillStatus,
     updateOffer,
 } from "src/core/services/order-service";
+import { numberToHex } from "viem";
 
 export const eventNames = [
     OfferCreated_EVENT_NAME,
@@ -79,7 +80,7 @@ export async function getLastBlockHex(blockchain: BlockchainNetwork) {
     if (blockchain.id == 421614 || blockchain.id == 80002) {
         const provider = new ethers.JsonRpcProvider(blockchain.rpcUrl);
         const blockNumber = await provider.getBlockNumber();
-        return `0x${blockNumber}`;
+        return numberToHex(blockNumber);
     } else {
         const callUrl = `${blockchain.rpcUrl}?module=block&action=eth_block_number`;
 
