@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAccount, useBalance } from "wagmi";
 import { parseUnits, zeroAddress } from "viem";
 import { useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
@@ -61,15 +61,18 @@ const useUserNFTs = (address: string | undefined, chainIds: number[] | undefined
   const [nfts, setNfts] = useState<NFT[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const hasFetched = useRef(false); // Step 2: Create a ref to track if fetchNFTs has been called
 
   useEffect(() => {
     const fetchNFTs = async () => {
+      if (hasFetched.current) return; // Step 3: Check if fetchNFTs has already been called
       if (!address || !chainIds || chainIds.length === 0) {
         setIsLoading(false);
         return;
       }
 
       setIsLoading(true);
+      hasFetched.current = true; // Step 4: Mark as fetched
 
       try {
         const response = await fetch('/api/fetchnfts', {
@@ -96,7 +99,7 @@ const useUserNFTs = (address: string | undefined, chainIds: number[] | undefined
     };
 
     fetchNFTs();
-  }, [address, chainIds, limit, offset]);
+  }, [address, chainIds, limit, offset]); // Dependencies remain the same
 
   return { nfts, isLoading, error };
 };
