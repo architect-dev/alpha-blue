@@ -33,6 +33,7 @@ import {
 
 export async function createOrder(event: OrderCreatedEvent) {
     console.log("Creating order", JSON.stringify(event));
+
     const possibleNewOrder = await getOfferFromContract(
         event.blockchain,
         event.orderId

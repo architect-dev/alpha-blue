@@ -1,6 +1,5 @@
 import { Knex } from "knex";
 import { DatabaseManager } from "src/core/db/db-manager";
-import { getBlockchainNetwork } from "src/core/db/repositories/blockchain-repository";
 import { getFillHistories } from "src/core/db/repositories/fill-history-repository";
 import {
     getPotentialFills,
@@ -75,21 +74,18 @@ export async function getOrders(options: {
     const orders: Order[] = [];
 
     for (const dbOrder of dbOrders) {
-        const blockchainNetwork = await getBlockchainNetwork({
-            networkId: dbOrder.network_id,
-        });
         const tokenMetadata = await getTokenMetadata({
             pkId: dbOrder.token_pk_id,
         });
+
         const potentialFills = await getPotentialFills({
-            pkId: options?.pkId,
+            orderPkId: dbOrder.pk_id,
         });
-        const orderFills = await getFillHistories({ pkId: options?.pkId });
+        const orderFills = await getFillHistories({ orderPkId: dbOrder.pk_id });
 
         orders.push(
             orderDbModelToOrder(
                 dbOrder,
-                blockchainNetwork,
                 tokenMetadata,
                 potentialFills,
                 orderFills

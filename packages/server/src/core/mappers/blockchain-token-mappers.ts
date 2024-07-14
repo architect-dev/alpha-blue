@@ -16,6 +16,7 @@ export function blockchainNetworkDbModelToBlockchainNetwork(
         name: blockchainNetworkDbModel.name,
         blockExplorerUrl: blockchainNetworkDbModel.block_explorer_url,
         rpcUrl: blockchainNetworkDbModel.rpc_url,
+        contractRpcUrl: blockchainNetworkDbModel.contract_rpc_url,
         lastReadEventsBlock: blockchainNetworkDbModel.last_read_events_block,
         chainImageUrl: blockchainNetworkDbModel.chain_image_url,
         updatedAt: dateStringToEpochSeconds(

@@ -12,8 +12,6 @@ export type ContractOffer = {
         tokenAmount: bigint;
         destAddress: string;
     }[];
-    depositTokenAddress: string;
-    depositAmount: bigint;
     status: number;
     offerFills: {
         fillId: number;

@@ -4,8 +4,9 @@ import { toGetOrdersHttpResponse } from "src/core/mappers/get-orders-http-respon
 import { readChainEvents } from "src/core/services/blockchain-service";
 
 export async function refreshOrder(req: any) {
-    console.log("Refreshing order with ", req.body);
-    const networkId: number = req.body?.networkId || 0;
+    console.log("Refreshing order with ", req);
+    const jsonBody = JSON.parse(req.body);
+    const networkId: number = jsonBody.networkId || 0;
     const blockchainNetwork = await getBlockchainNetwork({ networkId });
 
     await readChainEvents(blockchainNetwork);

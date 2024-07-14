@@ -1,6 +1,6 @@
+/* eslint-disable @typescript-eslint/no-redundant-type-constituents */
 import { Knex } from "knex";
 import { DatabaseManager } from "src/core/db/db-manager";
-import { getBlockchainNetwork } from "src/core/db/repositories/blockchain-repository";
 import { getTokenMetadata } from "src/core/db/repositories/token-metadata-repository";
 import {
     fillHistoryDbModelToFillHistory,
@@ -75,19 +75,12 @@ export async function getFillHistories(options: {
     const fillHistories: FillHistory[] = [];
 
     for (const dbFillHistory of dbFillHistories) {
-        const blockchainNetwork = await getBlockchainNetwork({
-            networkId: dbFillHistory.network_id,
-        });
         const tokenMetadata = await getTokenMetadata({
             pkId: dbFillHistory.token_pk_id,
         });
 
         fillHistories.push(
-            fillHistoryDbModelToFillHistory(
-                dbFillHistory,
-                blockchainNetwork,
-                tokenMetadata
-            )
+            fillHistoryDbModelToFillHistory(dbFillHistory, tokenMetadata)
         );
     }
 

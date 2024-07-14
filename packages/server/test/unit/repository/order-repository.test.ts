@@ -17,9 +17,10 @@ import { generateWalletAddress } from "src/core/utils/wallet-generator";
 let baseBlockchainNetwork: BlockchainNetwork;
 let usdcBaseTokenMetadata: TokenMetadata;
 let bnbBaseTokenMetadata: TokenMetadata;
+let wbtcBaseTokenMetadata: TokenMetadata;
 
 describe("Order Repository", () => {
-    beforeAll(async () => {
+    test("should get order by pkId", async () => {
         baseBlockchainNetwork = await getBlockchainNetwork({
             networkId: 84532,
         });
@@ -32,9 +33,12 @@ describe("Order Repository", () => {
             symbol: "BNB",
             networkId: 84532,
         });
-    });
 
-    test("should get order by pkId", async () => {
+        wbtcBaseTokenMetadata = await getTokenMetadata({
+            symbol: "WBTC",
+            networkId: 84532,
+        });
+
         const walletAddress = generateWalletAddress();
         const orderNumber = randomNumber();
         const newOrder: NewOrder = {
@@ -57,6 +61,13 @@ describe("Order Repository", () => {
                     blockchainNetwork: baseBlockchainNetwork,
                     tokenMetadata: bnbBaseTokenMetadata,
                     tokenAmount: "300000000",
+                    active: true,
+                },
+                {
+                    destinationWalletAddress: walletAddress,
+                    blockchainNetwork: baseBlockchainNetwork,
+                    tokenMetadata: wbtcBaseTokenMetadata,
+                    tokenAmount: "20000000",
                     active: true,
                 },
             ],

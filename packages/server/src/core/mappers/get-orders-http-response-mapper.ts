@@ -1,6 +1,5 @@
 import { Order, TokenMetadata } from "src/core/models/domain-models";
 import { GetOrderHttpResponse } from "src/core/models/response-models";
-import { stripContractIdPrefix } from "src/core/utils/format-tools";
 
 function formatTokenDetails(tokenMetadata: TokenMetadata) {
     return {
@@ -13,8 +12,6 @@ function formatTokenDetails(tokenMetadata: TokenMetadata) {
 }
 
 export function toGetOrdersHttpResponse(order: Order): GetOrderHttpResponse {
-    const strippedId = stripContractIdPrefix(order.orderId);
-
     const potentialFillsResponse = order.potentialFills.map((fill) => {
         const { tokenMetadata, tokenAmount } = fill;
 
@@ -33,6 +30,7 @@ export function toGetOrdersHttpResponse(order: Order): GetOrderHttpResponse {
         pendingBasisPoints: order.pendingBasisPoints,
         filledBasisPoints: order.filledBasisPoints,
         orderStatus: order.orderStatus,
+        partialFill: order.allowPartialFill,
     };
 
     const fills = order.orderFills;
@@ -53,7 +51,7 @@ export function toGetOrdersHttpResponse(order: Order): GetOrderHttpResponse {
     }
 
     return {
-        id: strippedId,
+        id: order.orderId,
         receive: potentialFillsResponse,
         fillHistory: swapHistory,
         creator: order.orderWalletAddress,

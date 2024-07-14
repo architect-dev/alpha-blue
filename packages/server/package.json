@@ -5,7 +5,7 @@
         "step-db:dev": "knex migrate:up --env develop",
         "rollback-db:dev": "knex migrate:rollback --env develop",
         "dev": "sls offline start --stage offline --verbose",
-        "test": "node --expose-gc ./node_modules/.bin/jest --detectOpenHandles"
+        "test": "node --expose-gc ./node_modules/.bin/jest"
     },
     "devDependencies": {
         "babel-jest": "^29.7.0",
@@ -31,6 +31,7 @@
         "serverless-mysql": "^1.5.5",
         "serverless-offline": "^13.6.0",
         "ts-jest": "^29.2.2",
+        "tsconfig-paths": "^4.2.0",
         "viem": "^2.17.3"
     }
 }

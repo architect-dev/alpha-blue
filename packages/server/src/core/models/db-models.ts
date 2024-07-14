@@ -3,6 +3,7 @@ export type BlockchainNetworkDbModel = {
     name: string;
     block_explorer_url: string;
     rpc_url: string;
+    contract_rpc_url: string;
     chain_image_url: string;
     last_read_events_block: number;
 
