@@ -2740,7 +2740,7 @@ __metadata:
   resolution: "@dynamic-labs/iconic@npm:3.0.0-alpha.19"
   dependencies:
     "@dynamic-labs/logger": 3.0.0-alpha.19
-    sharp: 0.33.1
+    sharp: 0.33.2
   peerDependencies:
     react: ^18.0.0
     react-dom: ^18.0.0
@@ -11345,9 +11345,9 @@ __metadata:
   linkType: hard
 
 "caniuse-lite@npm:^1.0.30001406, caniuse-lite@npm:^1.0.30001599, caniuse-lite@npm:^1.0.30001640":
-  version: 1.0.30001641
-  resolution: "caniuse-lite@npm:1.0.30001641"
-  checksum: f131829f7746374ae4a19a8fb5aef9bbc5649682afb0ffd6a74f567389cb6efadbab600cc83384a3e694e1646772ff14ac3c791593aedb41fb2ce1942a1aa208
+  version: 1.0.30001642
+  resolution: "caniuse-lite@npm:1.0.30001642"
+  checksum: 23f823ec115306eaf9299521328bb6ad0c4ce65254c375b14fd497ceda759ee8ee5b8763b7b622cb36b6b5fb53c6cb8569785fba842fe289be7dc3fcf008eb4f
   languageName: node
   linkType: hard
 
