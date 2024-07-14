@@ -1,94 +1,37 @@
-'use client';
-
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { TradeOfferCard } from '~~/components/TradeOfferCard';
-import { Grid } from 'react-loader-spinner';
-
-type TokenDetails = {
-  logoUrl: string;
-  symbol: string;
-  address: string;
-  decimals: string;
-  blockChainId: number;
-};
-
-type Receive = {
-  amount: string;
-  token: string;
-  decimals: string;
-  chain: string;
-  tokenDetails: TokenDetails;
-};
-
-type Offer = {
-  amount: string;
-  chain: string;
-  tokenDetails: TokenDetails;
-};
-
-type Trade = {
-  id: number;
-  receive: Receive[];
-  offer: Offer;
-  status: number;
-  chain: string[];
-  creator: string;
-};
+import React from "react";
+import TextAnimation from "../components/TextAnimation";
+import Image from "next/image";
 
 const Home = () => {
-  const [trades, setTrades] = useState<Trade[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchTrades = async () => {
-      try {
-        const response = await fetch('/api/trades');
-        const data: Trade[] = await response.json();
-        console.log({ data });
-        setTrades(data);
-      } catch (error) {
-        console.error('Failed to fetch trades', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTrades();
-  }, []);
-
   return (
-    <div className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold mt-8">All Trade Offers</h1>
-        <Link href="/create">
-          <button className="bg-blue-500 text-white px-4 py-2 mt-2 rounded">Create a Trade</button>
-        </Link>
+    <div className="relative min-h-screen w-screen overflow-hidden">
+      {/* Hero Section */}
+      <div className="hero-section flex flex-col items-center justify-center h-screen bg-gray-100 text-center pb-14">
+        <h1 className="text-4xl md:text-6xl font-bold mb-4">
+          Peer 2 Peer Cross Chain Orderbook Exchange
+        </h1>
+        <Image
+          src="/Emoji.png"
+          alt="Counterclockwise emoji"
+          width={75}
+          height={75}
+          style={{ objectFit: 'contain', margin: 40 }}
+        />
+        <p className="text-lg md:text-xl mb-6">
+          Trade tokens and NFTs directly with your community
+        </p>
       </div>
 
-      {loading &&
-        <div className="flex justify-center items-center min-h-96">
-          <Grid
-            height={80}
-            width={80}
-            color="rgb(37, 99, 235)"
-            wrapperStyle={{}}
-            wrapperClass=""
-            visible={true}
-          />
+      {/* Middle Section */}
+      <div className="middle-section flex flex-col items-center justify-center h-screen bg-blue-800 text-white text-center p-8">
+        <div className="max-w-5xl p-20 bg-transparent text-lg md:text-xl font-sans font-semibold leading-relaxed text-white">
+          Alpha Blue is a decentralized orderbook exchange that allows two parties to place and fill offers for tokens and NFTs. The protocol leverages Chainlink CCIP for cross-chain interoperability which allows for reliable and secure message transfers between chains. This makes Alpha Blue a superior option for users looking to trade or even bridge assets across blockchains. Alpha Blue addresses the gap in the market by providing a user-friendly and secure solution for peer to peer market activity.
         </div>
-      }
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {trades.map(trade => (
-          <TradeOfferCard
-            key={trade.id}
-            id={trade.id.toString()}
-            offer={trade.offer}
-            receive={trade.receive}
-            status={trade.status}
-            creator={trade.creator}
-          />
-        ))}
+      </div>
+
+      {/* Text Animation Section */}
+      <div className="text-animation-section flex flex-col items-center justify-center h-screen bg-white text-center p-8">
+        <TextAnimation />
       </div>
     </div>
   );
