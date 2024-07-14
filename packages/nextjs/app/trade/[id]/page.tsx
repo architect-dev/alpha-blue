@@ -46,7 +46,7 @@ enum OrderStatus {
   Filled = 4,
 }
 
-export function stripContractIdPrefix(id: string) {
+function stripContractIdPrefix(id: string) {
   const orderNumber = id.substring(id.lastIndexOf("-") + 1);
   return parseInt(orderNumber);
 }
