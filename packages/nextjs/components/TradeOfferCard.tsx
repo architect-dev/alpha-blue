@@ -107,7 +107,7 @@ export const TradeOfferCard: FC<TradeOfferCardProps> = ({ id, receive, offer, st
                     {formatAmount(item.amount, item.tokenDetails.decimals)} {item.tokenDetails.symbol}
                     <img src={item.tokenDetails.logoUrl} alt={item.chain} className="inline-block h-5 ml-2" />
                   </div>
-                  <span className="text-sm font-normal text-gray-500 ml-3">on {item.chain}</span>
+                  <span className="text-sm text-right font-normal text-gray-500 ml-3">on {item.chain}</span>
                 </div>
                 {index < receive.length - 1 && <div className="text-gray-600 text-xs my-2">OR</div>}</>
             ))}
