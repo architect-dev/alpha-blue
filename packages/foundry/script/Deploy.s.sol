@@ -41,30 +41,30 @@ contract DeployScript is ScaffoldETHDeploy {
         }
         vm.startBroadcast(deployerPrivateKey);
 
-        WETH = new BasicERC20("WETH", "WETH", 18);
-        _markDeployment("WETH", address(WETH));
-        WBTC = new BasicERC20("WBTC", "WBTC", 8);
-        _markDeployment("WBTC", address(WBTC));
-        USDC = new BasicERC20("USDC", "USDC", 6);
-        _markDeployment("USDC", address(USDC));
-        BNB = new BasicERC20("BNB", "BNB", 18);
-        _markDeployment("BNB", address(BNB));
+        // WETH = new BasicERC20("WETH", "WETH", 18);
+        // _markDeployment("WETH", address(WETH));
+        // WBTC = new BasicERC20("WBTC", "WBTC", 8);
+        // _markDeployment("WBTC", address(WBTC));
+        // USDC = new BasicERC20("USDC", "USDC", 6);
+        // _markDeployment("USDC", address(USDC));
+        // BNB = new BasicERC20("BNB", "BNB", 18);
+        // _markDeployment("BNB", address(BNB));
 
-        MOCC = new BasicERC721(
-            "MOCC",
-            "MOCC",
-            "https://tokenBaseURI",
-            "https://contractURI"
-        );
-        _markDeployment("MOCC", address(MOCC));
+        // MOCC = new BasicERC721(
+        //     "MOCC",
+        //     "MOCC",
+        //     "https://tokenBaseURI",
+        //     "https://contractURI"
+        // );
+        // _markDeployment("MOCC", address(MOCC));
 
-        // BASE
+        // DYNAMIC
         alphaBlue = new AlphaBlue(
-            sepoliaChainId,
+            arbChainId,
             address(WETH),
             nftWethDeposit,
-            0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59,
-            0x779877A7B0D9E8603169DdbD7836e478b4624789
+            0x2a9C5afB0d0e4BAb2BCdaE109EC4b0c4Be15a165,
+            0xb1D4538B4571d411F07960EF2838Ce337FE1E80E
         );
         _markDeployment("alphaBlue", address(alphaBlue));
 
