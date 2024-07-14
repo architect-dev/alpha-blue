@@ -39,6 +39,6 @@
 	},
 	"dependencies": {
 		"@svgr/webpack": "^8.1.0",
-		"sharp": "v0.33.1"
+		"sharp": "0.33.1"
 	}
 }
