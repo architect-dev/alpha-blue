@@ -1,215 +1,414 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
-import { formatUnits } from 'viem';
-import { Address } from '~~/components/scaffold-eth';
-import { Grid } from 'react-loader-spinner';
+import { useState } from "react";
+import { useAccount, useBalance } from "wagmi";
+import { parseUnits, zeroAddress } from "viem";
+import { useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
+import { getParsedError } from "~~/utils/scaffold-eth";
 
-interface TokenDetails {
-  logoUrl: string;
-  symbol: string;
-  address: string;
-  decimals: string;
-  blockChainId: number;
+export enum FillStatus {
+  "Pending" = 1,
+  "Invalid" = 2,
+  "Succeeded" = 3,
+  "Expired" = 4,
+  "FillFailed" = 5,
+  "XFillFailed" = 6,
 }
 
-interface SendOption {
-  amount: string;
+interface TradeOption {
+  chain: string;
   token: string;
-  chain: string;
-  tokenDetails: TokenDetails;
-}
-
-interface Offer {
   amount: string;
-  chain: string;
-  tokenDetails: TokenDetails;
-  partialFill: boolean;
 }
 
-interface Trade {
-  id: number;
-  receive: SendOption[];
-  offer: Offer;
-  status: number;
-  chain: string[];
-  creator: string;
+interface NFT {
+  tokenId: string;
+  name: string;
+  symbol: string;
+  tokenAddress: string;
+  tokenUri: string;
+  metadata?: any;
 }
 
-enum OrderStatus {
-  Active = 1,
-  Expired = 2,
-  Canceled = 3,
-  Filled = 4,
-}
+const tokenMetadata = [
+  {
+    symbol: "USDC",
+    address: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    decimals: 6,
+    name: "Base Sepolia",
+    logo_url: "/path/to/USDC_LOGO.png",
+    network_id: 84532,
+  },
+  {
+    symbol: "USDC",
+    address: "0x2F25deB3848C207fc8E0c34035B3Ba7fC157602B",
+    decimals: 6,
+    name: "Celo Alfajores",
+    logo_url: "/path/to/USDC_LOGO.png",
+    network_id: 44787,
+  },
+  {
+    symbol: "USDC",
+    name: "Arbitrum Sepolia",
+    address: "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+    decimals: 6,
+    logo_url: "/path/to/USDC_LOGO.png",
+    network_id: 421614,
+  },
+];
 
-const getStatusText = (status: number): string => {
-  switch (status) {
-    case OrderStatus.Active:
-      return 'Active';
-    case OrderStatus.Expired:
-      return 'Expired';
-    case OrderStatus.Canceled:
-      return 'Canceled';
-    case OrderStatus.Filled:
-      return 'Filled';
-    default:
-      return 'Unknown Status';
-  }
-};
-
-const JoinTrade = () => {
-  const params = useParams();
-  const tradeid = params.id as string;
-
-  const [trade, setTrade] = useState<Trade | null>(null);
-  const [tradeAmount, setTradeAmount] = useState(100);
-  const [selectedSendOption, setSelectedSendOption] = useState<SendOption | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+const useUserNFTs = () => {
+  const [nfts, setNfts] = useState<NFT[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchTradeData = async () => {
-      if (!tradeid) return;
+  const fetchNFTs = async (address: string, chainIds: number[], limit = 10, offset = 0) => {
+    setIsLoading(true);
 
-      try {
-        setIsLoading(true);
-        const response = await fetch(`/api/trade/${tradeid}`);
-        if (!response.ok) throw new Error('Failed to fetch trade data');
-        const data: Trade = await response.json();
-        setTrade(data);
-        if (data.receive.length === 1) {
-          setSelectedSendOption(data.receive[0]);
-        }
-      } catch (err) {
-        setError('Failed to load trade data');
-        console.error(err);
-      } finally {
-        setIsLoading(false);
+    try {
+      const response = await fetch('/api/fetchnfts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ address, chainIds, limit, offset }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`);
       }
+
+      const fetchedNFTs = await response.json();
+      console.log({ fetchedNFTs });
+      setNfts(fetchedNFTs.assets || []);
+    } catch (err) {
+      console.error("Error fetching NFTs:", err);
+      setError("Failed to fetch NFTs");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { nfts, isLoading, error, fetchNFTs };
+};
+
+const CreateTrade = () => {
+  const [offerType, setOfferType] = useState<"Token" | "NFT">("Token");
+  const [tradeType, setTradeType] = useState<"full" | "partial">("full");
+  const [tradeOptions, setTradeOptions] = useState<TradeOption[]>([{ chain: "", token: "", amount: "" }]);
+  const [selectedNft, setSelectedNft] = useState<NFT | null>(null);
+  const [selectedChain, setSelectedChain] = useState<string>("");
+  const [selectedToken, setSelectedToken] = useState<string>("USDC");
+  const [selectedTokenAmount, setSelectedTokenAmount] = useState<string>("");
+  const [selectedNftChains, setSelectedNftChains] = useState<string[]>([]);
+  const [isCreateOfferLoading, setIsCreateOfferLoading] = useState(false);
+  const { address } = useAccount();
+
+  const selectedTokenMetadata = tokenMetadata.find(token => token.name === selectedChain);
+  const chainIds = tokenMetadata.filter(token => selectedNftChains.includes(token.name)).map(token => token.network_id);
+  const { nfts, isLoading: nftsLoading, error: nftsError, fetchNFTs } = useUserNFTs();
+
+  const { data: balance, isError, isLoading } = useBalance({
+    address: address,
+    token: selectedTokenMetadata?.address,
+    chainId: selectedTokenMetadata?.network_id,
+  });
+
+  const { writeContractAsync: createOfferWrite } = useScaffoldWriteContract("alphaBlue");
+
+  const handleAddOption = () => {
+    setTradeOptions([...tradeOptions, { chain: "", token: "", amount: "" }]);
+  };
+
+  const handleOptionChange = (index: number, field: keyof TradeOption, value: string) => {
+    const newTradeOptions = [...tradeOptions];
+    newTradeOptions[index][field] = value;
+    setTradeOptions(newTradeOptions);
+  };
+
+  const handleNftSelect = (nft: NFT) => {
+    setSelectedNft(nft);
+  };
+
+  const handleChainSelect = (chain: string) => {
+    setSelectedChain(chain);
+    setSelectedToken("USDC");
+  };
+
+  const handleNftChainSelect = (chain: string) => {
+    setSelectedNftChains(prevChains => {
+      const newChains = prevChains.includes(chain) ? prevChains.filter(c => c !== chain) : [...prevChains, chain];
+      return newChains;
+    });
+  };
+
+  const handleFetchNFTs = () => {
+    if (address && chainIds.length > 0 && !nftsLoading) {
+      fetchNFTs(address, chainIds);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const currentTimestamp = BigInt(Math.floor(Date.now() / 1000));
+    const oneWeekFromNow = currentTimestamp + BigInt(7 * 24 * 60 * 60); // 1 week expiration
+
+    let offerData = {
+      owner: address!,
+      tokenAddress: offerType === "Token" ? selectedTokenMetadata?.address || zeroAddress : zeroAddress,
+      tokenAmount: offerType === "Token" ? parseUnits(selectedTokenAmount, selectedTokenMetadata?.decimals || 18) : BigInt(0),
+      nftAddress: offerType === "NFT" ? selectedNft?.tokenAddress || zeroAddress : zeroAddress,
+      nftId: offerType === "NFT" ? BigInt(selectedNft?.tokenId || "0") : BigInt(0),
+      allowPartialFills: tradeType === "partial",
+      created: currentTimestamp,
+      expiration: oneWeekFromNow,
+      fillOptions: tradeOptions.map(option => ({
+        chainId: BigInt(tokenMetadata.find(token => token.name === option.chain)?.network_id || 0),
+        tokenAddress: tokenMetadata.find(token => token.name === option.chain)?.address || zeroAddress,
+        tokenAmount: parseUnits(option.amount, 6), // Assuming USDC with 6 decimals
+        destAddress: address!, // Assuming the address to be the current user's address
+      })),
+      status: FillStatus.Pending,
+      offerFills: [],
+      depositTokenAddress: zeroAddress,
+      depositAmount: BigInt(0),
+      filledBP: BigInt(0),
+      pendingBP: BigInt(0),
     };
 
-    fetchTradeData();
-  }, [tradeid]);
-
-  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setTradeAmount(parseInt(e.target.value));
+    try {
+      console.log({ offerData });
+      await createOfferWrite({
+        functionName: "createOffer",
+        args: [offerData]
+      });
+      console.log("Offer created successfully");
+      // Reset form or navigate to a success page
+    } catch (error) {
+      console.error('Error creating offer:', getParsedError(error));
+    }
   };
-
-  const handleSendOptionSelect = (option: SendOption) => {
-    setSelectedSendOption(option);
-  };
-
-  const formatAmount = (amount: any, decimals: string) => {
-    return formatUnits(amount, parseInt(decimals));
-  };
-
-  if (isLoading) return (
-    <div className="flex justify-center items-center min-h-96">
-      <Grid
-        height={80}
-        width={80}
-        color="rgb(37, 99, 235)"
-        wrapperStyle={{}}
-        wrapperClass=""
-        visible={true}
-      />
-    </div>)
-  if (error) return <div>Error: {error}</div>;
-  if (!trade) return <div>No trade data available</div>;
-
-  const receiveAmount = selectedSendOption
-    ? (parseFloat(trade.offer.amount) * tradeAmount) / 100
-    : 0;
-  const sendAmount = selectedSendOption
-    ? (parseFloat(selectedSendOption.amount) * tradeAmount) / 100
-    : 0;
 
   return (
-    <div className="container max-w-lg mx-auto p-4 flex flex-col items-center">
-      <div className="text-sm mb-6 mt-3 text-neutral-500">{trade.id}</div>
-
-      <div className="bg-white p-6 py-4 pt-3 rounded-md shadow-sm mb-6 w-full">
-        <div className="text-gray-600 text-sm">Trade status</div>
-        <div className="text-lg font-semibold">{getStatusText(trade.status)}</div>
-        <div className="flex mt-4 w-full">
-          <div className={`h-2 w-1/4 ${trade.status === OrderStatus.Active ? 'bg-green-500' : 'bg-gray-300'} rounded-full mr-1`}></div>
-          <div className={`h-2 w-1/4 ${trade.status === OrderStatus.Canceled ? 'bg-red-500' : 'bg-gray-300'} rounded-full mr-1`}></div>
-          <div className={`h-2 w-1/4 ${trade.status === OrderStatus.Filled ? 'bg-blue-500' : 'bg-gray-300'} rounded-full mr-1`}></div>
-          <div className="h-2 w-1/4 bg-gray-300 rounded-full"></div>
-        </div>
-      </div>
-
-      <div className="mb-6 w-full bg-white p-6 py-4 rounded-lg shadow-md">
-        <label className="block text-lg font-bold mb-1">You Receive</label>
-        <div className="flex items-center mb-4 w-full text-gray-600 text-sm">
-          From <div className="ml-2"><Address address={trade.creator} size="sm" /></div>
-        </div>
-        <div className="bg-gray-100 p-4 rounded-md mb-1">
-          <div className="flex items-center text-2xl font-bold">
-            {formatAmount(receiveAmount.toString(), trade.offer.tokenDetails.decimals)} {trade.offer.tokenDetails.symbol}
-            <img src={trade.offer.tokenDetails.logoUrl} alt={trade.offer.chain} className="inline-block h-5 ml-2" />
+    <div className="container mx-auto p-4 mt-10 flex flex-col items-center">
+      <h1 className="text-3xl font-bold mb-6">Create a New Trade</h1>
+      <form onSubmit={handleSubmit} className="w-full max-w-lg bg-white p-6 rounded-lg shadow-md">
+        <div className="mb-6">
+          <label className="block text-xl font-bold mb-2">Your Offer</label>
+          <div className="flex items-center mb-4">
+            <label className="flex items-center mr-4">
+              <input
+                type="radio"
+                name="offerType"
+                value="Token"
+                checked={offerType === "Token"}
+                onChange={() => setOfferType("Token")}
+                className="mr-2"
+              />
+              <span>Token</span>
+            </label>
+            <label className="flex items-center">
+              <input
+                type="radio"
+                name="offerType"
+                value="NFT"
+                checked={offerType === "NFT"}
+                onChange={() => setOfferType("NFT")}
+                className="mr-2"
+              />
+              <span>NFT</span>
+            </label>
           </div>
-          <div className="text-sm text-gray-500">on {trade.offer.chain}</div>
+          {offerType === "Token" && (
+            <>
+              <div className="mb-4">
+                <div className="text-sm text-neutral-600 mb-1">Blockchain:</div>
+                <select
+                  className="w-full p-2 border rounded-md"
+                  value={selectedChain}
+                  onChange={(e) => handleChainSelect(e.target.value)}
+                >
+                  <option value="">Select chain</option>
+                  {tokenMetadata.map(token => (
+                    <option key={token.name} value={token.name}>
+                      {token.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {selectedChain && (
+                <>
+                  <div className="mb-4">
+                    <div className="text-sm text-neutral-600 mb-1">Select token:</div>
+                    <select
+                      className="w-full p-2 border rounded-md"
+                      value={selectedToken}
+                      onChange={(e) => setSelectedToken(e.target.value)}
+                    >
+                      <option value="USDC">USDC</option>
+                    </select>
+                  </div>
+
+                  {balance && selectedChain && (
+                    <div className="bg-gray-100 p-3 py-2 rounded-md mb-4">
+                      <label className="block text-sm font-bold">Your Balance</label>
+                      {isLoading && <div>Loading balance...</div>}
+                      {isError && <div>Error fetching balance</div>}
+                      {!isLoading && !isError && (
+                        <div className="flex justify-between items-center">
+                          <div className="text-xl font-bold">{balance.formatted} {balance.symbol}</div>
+                          <div className="text-sm text-gray-500">on {selectedChain}</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <div className="mb-4">
+                    <div className="text-sm text-neutral-600 mb-1">Amount of {balance?.symbol || 'token'} to add to trade:</div>
+                    <input
+                      type="number"
+                      className="w-full p-2 border rounded-md"
+                      value={selectedTokenAmount}
+                      onChange={(e) => setSelectedTokenAmount(e.target.value)}
+                    />
+                  </div>
+                </>
+              )}
+            </>
+          )}
+          {offerType === "NFT" && (
+            <>
+              <div className="mb-4">
+                <div className="text-sm text-neutral-600 mb-1">Blockchain:</div>
+                <select
+                  className="w-full p-2 border rounded-md"
+                  value=""
+                  onChange={(e) => handleNftChainSelect(e.target.value)}
+                >
+                  <option value="">Select chain</option>
+                  {tokenMetadata.map(token => (
+                    <option key={token.name} value={token.name}>
+                      {token.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {selectedNftChains.length > 0 && (
+                <div className="mb-4">
+                  <label className="block text-sm font-bold mb-1">Select NFT</label>
+                  {nftsLoading && <div>Loading your NFTs...</div>}
+                  {nftsError && <div>Error loading NFTs: {nftsError}</div>}
+                  {!nftsLoading && !nftsError && nfts.length === 0 && (
+                    <div>You don't have any NFTs on the selected chains</div>
+                  )}
+                  <div className="grid grid-cols-2 gap-2">
+                    {nfts.map((nft) => (
+                      <div
+                        key={`${nft.tokenAddress}-${nft.tokenId}`}
+                        className={`border p-2 rounded-md cursor-pointer ${selectedNft?.tokenId === nft.tokenId ? "border-blue-500" : "border-gray-300"
+                          }`}
+                        onClick={() => handleNftSelect(nft)}
+                      >
+                        <img src={nft.metadata?.image || '/placeholder-image.png'} alt={nft.name} className="w-full h-auto" />
+                        <p className="text-sm mt-1">{nft.name || `NFT #${nft.tokenId}`}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
-      </div>
-
-      <div className="mb-6 w-full bg-white p-6 rounded-lg shadow-md">
-        <label className="block text-xl font-bold">You send</label>
-        <div className="text-sm text-gray-500 mb-3">Select the option you'd like to send</div>
-        {trade.receive.map((option, index) => (
-          <div key={index} onClick={() => handleSendOptionSelect(option)}>
-            <div className={`bg-neutral-100 p-4 rounded-md shadow-sm mb-2 cursor-pointer transition-all hover:shadow-lg  ${selectedSendOption === option ? 'border-2 border-blue-500' : 'border-2 border-neutral-200'}`}>
-              <div className="flex items-center text-gray-700 text-lg font-semibold justify-between">
-                <div>
-                  {formatAmount(option.amount, option.tokenDetails.decimals)} {option.tokenDetails.symbol}
-                  <img src={option.tokenDetails.logoUrl} alt={option.chain} className="inline-block h-5 ml-2" />
-                </div>
-                <span className="text-sm font-normal text-gray-500 ml-3">on {option.chain}</span>
-              </div>
-            </div>
-            {index < trade.receive.length - 1 && <div className="text-gray-600 text-sm text-center my-2">OR</div>}
+        <div className="flex justify-center mb-4">
+          <div className="text-xl">⇅</div>
+        </div>
+        <div className="mb-6">
+          <label className="block text-xl font-bold mb-2">Requesting</label>
+          <div className="flex items-center mb-4">
+            <label className="flex items-center mr-4">
+              <input
+                type="radio"
+                name="tradeType"
+                value="full"
+                checked={tradeType === "full"}
+                onChange={() => setTradeType("full")}
+                className="mr-2"
+              />
+              <span>Only allow full trades</span>
+            </label>
+            <label className="flex items-center">
+              <input
+                type="radio"
+                name="tradeType"
+                value="partial"
+                checked={tradeType === "partial"}
+                onChange={() => setTradeType("partial")}
+                className="mr-2"
+              />
+              <span>Partially fillable trade</span>
+            </label>
           </div>
-        ))}
-
-        {selectedSendOption && trade.offer.partialFill ? (
-
-          <>
-            <div className="my-6">
-              <div className=" font-bold">Partial fill on this trade is permitted</div>
-              <div className="text-sm text-gray-500 mb-3">Use the slider to choose how much you'd like to trade</div>
-              <div className="relative w-full">
-                <div className="text-xs font-bold w-full">{tradeAmount}%</div>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={tradeAmount}
-                  onChange={handleSliderChange}
-                  className="w-full"
-                />
-              </div>
+          {tradeOptions.map((option, index) => (
+            <div key={index} className="bg-gray-100 p-4 rounded-md mb-4">
+              <label className="block text-sm font-bold mb-2">Blockchain</label>
+              <select
+                className="w-full p-2 border rounded-md mb-2"
+                value={option.chain}
+                onChange={e => handleOptionChange(index, "chain", e.target.value)}
+              >
+                <option value="">Select Chain</option>
+                {tokenMetadata.map(token => (
+                  <option key={token.name} value={token.name}>
+                    {token.name}
+                  </option>
+                ))}
+              </select>
+              {option.chain && (
+                <>
+                  <label className="block text-sm font-bold mb-2">Token</label>
+                  <select
+                    className="w-full p-2 border rounded-md mb-2"
+                    value={option.token}
+                    onChange={e => handleOptionChange(index, "token", e.target.value)}
+                  >
+                    <option value="USDC">USDC</option>
+                  </select>
+                  <label className="block text-sm font-bold mb-2">Amount</label>
+                  <input
+                    type="number"
+                    className="w-full p-2 border rounded-md"
+                    value={option.amount}
+                    onChange={e => handleOptionChange(index, "amount", e.target.value)}
+                  />
+                </>
+              )}
             </div>
-
-            <div className="">
-              <div className="text-center rounded-md">
-                <div className="flex items-center justify-center text-2xl font-bold">
-                  {formatAmount(sendAmount.toString(), selectedSendOption.tokenDetails.decimals)} {selectedSendOption.tokenDetails.symbol}
-                  <img src={selectedSendOption.tokenDetails.logoUrl} alt={selectedSendOption.chain} className="inline-block h-5 ml-2" />
-                </div>
-                <div className="text-sm text-gray-500">on {selectedSendOption.chain}</div>
-              </div>
-            </div>
-          </>
-        ) : <div></div>}
-      </div>
-      <button type="submit" className="w-full bg-blue-700 text-white py-2 rounded-md">
-        Submit
+          ))}
+          <button
+            type="button"
+            onClick={handleAddOption}
+            className="w-full bg-gray-300 text-center py-2 rounded-md mb-4"
+          >
+            + Add Another Option
+          </button>
+        </div>
+        <button
+          type="submit"
+          className="w-full bg-blue-700 text-white py-2 rounded-md"
+          disabled={isCreateOfferLoading}
+        >
+          {isCreateOfferLoading ? "Creating offer..." : "Submit"}
+        </button>
+      </form>
+      <button
+        type="button"
+        className="mt-4 bg-green-500 text-white py-2 px-4 rounded"
+        onClick={handleFetchNFTs}
+      >
+        Fetch NFTs
       </button>
-
     </div>
   );
 };
 
-export default JoinTrade;
+export default CreateTrade;

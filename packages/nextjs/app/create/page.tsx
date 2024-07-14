@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useAccount, useBalance } from "wagmi";
 import { parseUnits, zeroAddress } from "viem";
-import Moralis from 'moralis';
 import { useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 import { getParsedError } from "~~/utils/scaffold-eth";
 
@@ -58,45 +57,36 @@ const tokenMetadata = [
   },
 ];
 
-// Initialize Moralis
-Moralis.start({
-  apiKey: "your-moralis-api-key",
-});
-
-const useUserNFTs = (address: string | undefined, chain: number | undefined) => {
+const useUserNFTs = (address: string | undefined, chainIds: number[] | undefined, limit = 10, offset = 0) => {
   const [nfts, setNfts] = useState<NFT[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setNfts([]);
-
-    if (!address || !chain) {
-      setIsLoading(false);
-      return;
-    }
-
     const fetchNFTs = async () => {
+      if (!address || !chainIds || chainIds.length === 0) {
+        setIsLoading(false);
+        return;
+      }
+
       setIsLoading(true);
 
       try {
-        const response = await Moralis.EvmApi.nft.getWalletNFTs({
-          chain,
-          format: "decimal",
-          mediaItems: false,
-          address: address
+        const response = await fetch('/api/fetchnfts', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ address, chainIds, limit, offset }),
         });
 
-        const fetchedNFTs: NFT[] = response.result.map((nft: any) => ({
-          tokenId: nft.token_id?.toString(),
-          name: nft.name || "",
-          symbol: nft.symbol || "",
-          tokenAddress: nft.token_address?.toLowerCase(),
-          tokenUri: nft.token_uri || "",
-          metadata: nft.metadata
-        }));
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`);
+        }
 
-        setNfts(fetchedNFTs);
+        const fetchedNFTs = await response.json();
+        console.log({ fetchedNFTs })
+        setNfts(fetchedNFTs.assets || []);
         setIsLoading(false);
       } catch (err) {
         console.error("Error fetching NFTs:", err);
@@ -106,7 +96,7 @@ const useUserNFTs = (address: string | undefined, chain: number | undefined) => 
     };
 
     fetchNFTs();
-  }, [address, chain]);
+  }, [address, chainIds, limit, offset]);
 
   return { nfts, isLoading, error };
 };
@@ -119,13 +109,13 @@ const CreateTrade = () => {
   const [selectedChain, setSelectedChain] = useState<string>("");
   const [selectedToken, setSelectedToken] = useState<string>("USDC");
   const [selectedTokenAmount, setSelectedTokenAmount] = useState<string>("");
-  const [selectedNftChain, setSelectedNftChain] = useState<string>("");
+  const [selectedNftChains, setSelectedNftChains] = useState<string[]>([]);
   const [isCreateOfferLoading, setIsCreateOfferLoading] = useState(false);
   const { address } = useAccount();
 
   const selectedTokenMetadata = tokenMetadata.find(token => token.name === selectedChain);
-  const selectedNftChainMetadata = tokenMetadata.find(token => token.name === selectedNftChain);
-  const { nfts, isLoading: nftsLoading, error: nftsError } = useUserNFTs(address, selectedNftChainMetadata?.network_id);
+  const chainIds = tokenMetadata.filter(token => selectedNftChains.includes(token.name)).map(token => token.network_id);
+  const { nfts, isLoading: nftsLoading, error: nftsError } = useUserNFTs(address, chainIds);
 
   const { data: balance, isError, isLoading } = useBalance({
     address: address,
@@ -155,7 +145,13 @@ const CreateTrade = () => {
   };
 
   const handleNftChainSelect = (chain: string) => {
-    setSelectedNftChain(chain);
+    setSelectedNftChains(prevChains => {
+      if (prevChains.includes(chain)) {
+        return prevChains.filter(c => c !== chain);
+      } else {
+        return [...prevChains, chain];
+      }
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -179,7 +175,7 @@ const CreateTrade = () => {
         tokenAmount: parseUnits(option.amount, 6), // Assuming USDC with 6 decimals
         destAddress: address!, // Assuming the address to be the current user's address
       })),
-      status: FillStatus.Pending, // Initial status set to Pending
+      status: FillStatus.Pending,
       offerFills: [],
       depositTokenAddress: zeroAddress,
       depositAmount: BigInt(0),
@@ -292,21 +288,24 @@ const CreateTrade = () => {
                 <div className="text-sm text-neutral-600 mb-1">Blockchain:</div>
                 <select
                   className="w-full p-2 border rounded-md"
-                  value={selectedNftChain}
+                  value=""
                   onChange={(e) => handleNftChainSelect(e.target.value)}
                 >
                   <option value="">Select chain</option>
-                  <option value="Base Sepolia">Base Sepolia</option>
-                  {/* Add other chains as needed */}
+                  {tokenMetadata.map(token => (
+                    <option key={token.name} value={token.name}>
+                      {token.name}
+                    </option>
+                  ))}
                 </select>
               </div>
-              {selectedNftChain && (
+              {selectedNftChains.length > 0 && (
                 <div className="mb-4">
                   <label className="block text-sm font-bold mb-1">Select NFT</label>
                   {nftsLoading && <div>Loading your NFTs...</div>}
                   {nftsError && <div>Error loading NFTs: {nftsError}</div>}
                   {!nftsLoading && !nftsError && nfts.length === 0 && (
-                    <div>You don't have any NFTs on {selectedNftChain}</div>
+                    <div>You don't have any NFTs on the selected chains</div>
                   )}
                   <div className="grid grid-cols-2 gap-2">
                     {nfts.map((nft) => (
