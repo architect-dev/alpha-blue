@@ -43,4 +43,10 @@ interface AlphaBlueEvents {
         address indexed filler,
         uint256 indexed fillId
     );
+    event FillAttempted(
+        uint256 indexed chainId,
+        address indexed filler,
+        uint256 indexed fillId,
+        uint8 errType
+    );
 }

@@ -32,7 +32,7 @@ interface TradeOfferCardProps {
   creator: string;
 }
 
-const formatAmount = (amount: string, decimals: string) => {
+const formatAmount = (amount: any, decimals: string) => {
   return formatUnits(amount, parseInt(decimals));
 };
 

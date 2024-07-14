@@ -6,7 +6,7 @@ import { parseUnits, zeroAddress } from "viem";
 import { useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 import { getParsedError } from "~~/utils/scaffold-eth";
 
-export enum FillStatus {
+enum FillStatus {
   "Pending" = 1,
   "Invalid" = 2,
   "Succeeded" = 3,

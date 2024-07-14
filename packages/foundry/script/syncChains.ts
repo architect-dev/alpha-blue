@@ -25,6 +25,7 @@ import {
 	base,
 	baseGoerli,
 	baseSepolia,
+	gnosisChiado,
 } from 'viem/chains'
 import { privateKeyToAccount } from 'viem/accounts'
 import { GenericContractsDeclaration } from './contract'
@@ -82,8 +83,11 @@ type ChainData = {
 }
 
 const chainsToSync: Record<string, true> = {
+	[sepolia.id]: true,
 	[baseSepolia.id]: true,
 	[arbitrumSepolia.id]: true,
+	[gnosisChiado.id]: true,
+	[polygonAmoy.id]: true,
 }
 
 const tokenNames: Record<string, true> = {

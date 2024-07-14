@@ -358,7 +358,7 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
         // TAKE DEPOSIT
 
         if (
-            !_checkAllowanceAndBalance(
+            !_checkAllowance(
                 offer.depositTokenAddress,
                 offer.depositAmount,
                 msg.sender,
@@ -407,6 +407,14 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
 
         ccipBlue.messageType = MessageType.CINVALID;
         ccipBlue.errorType = err;
+
+        emit FillAttempted(
+            ccipBlue.offerChain,
+            address(0),
+            ccipBlue.offerId,
+            uint8(err)
+        );
+
         _sendCCIP(ccipBlue);
     }
 
@@ -641,6 +649,14 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
         }
 
         emit OfferFilled(chainId, offer.owner, offerId);
+    }
+    function _checkAllowance(
+        address token,
+        uint256 amount,
+        address from,
+        address to
+    ) internal view returns (bool) {
+        return IERC20(token).allowance(from, to) >= amount;
     }
     function _checkAllowanceAndBalance(
         address token,
@@ -891,7 +907,9 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
             data: payload,
             tokenAmounts: new Client.EVMTokenAmount[](0),
             feeToken: address(linkToken),
-            extraArgs: ""
+            extraArgs: Client._argsToBytes(
+                Client.EVMExtraArgsV1({gasLimit: 900_000})
+            )
         });
 
         uint256 fee = router.getFee(destSelector[destChain], xcMessage);
