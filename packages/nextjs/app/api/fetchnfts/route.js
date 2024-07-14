@@ -24,7 +24,7 @@ export async function POST(req) {
     console.log({ config })
 
     const response = await axios.get(url, config);
-    console.log({ response })
+    console.log({ response: response.data })
     return NextResponse.json(response?.data || { assets: [] });
   } catch (error) {
     console.error('Fetch error:', error);

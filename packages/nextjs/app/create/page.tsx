@@ -30,6 +30,33 @@ interface NFT {
   metadata?: any;
 }
 
+const chainMetadata = [
+  {
+    symbol: "USDC",
+    address: "0x046381E3750f367540d046075C4dB392D3F48569",
+    decimals: 6,
+    name: "Polygon Amoy",
+    logo_url: "/path/to/USDC_LOGO.png",
+    network_id: 80002,
+  },
+  {
+    symbol: "USDC",
+    address: "0x4Cef8bdCbDac0849cAEAD241339a2C91EecAF965",
+    decimals: 6,
+    name: "Base Sepolia",
+    logo_url: "/path/to/USDC_LOGO.png",
+    network_id: 84532,
+  },
+  {
+    symbol: "USDC",
+    name: "Arbitrum Sepolia",
+    address: "0x490da4aA8D854620F9C3f249Dc00f4Be1A64D499",
+    decimals: 6,
+    logo_url: "/path/to/USDC_LOGO.png",
+    network_id: 421614,
+  },
+];
+
 const tokenMetadata = [
   {
     symbol: "USDC",
@@ -319,8 +346,8 @@ const CreateTrade = () => {
                   onChange={e => handleChainSelect(e.target.value)}
                 >
                   <option value="">Select chain</option>
-                  {tokenMetadata.map(token => (
-                    <option key={token.name} value={token.name}>
+                  {chainMetadata.map((token, i) => (
+                    <option key={i} value={token.name}>
                       {token.name}
                     </option>
                   ))}
@@ -335,6 +362,13 @@ const CreateTrade = () => {
                       value={selectedToken}
                       onChange={e => setSelectedToken(e.target.value)}
                     >
+                      {
+                        tokenMetadata.map((c) => c.name === selectedChain ? c : null).filter((e) => e).map((token, i) => (
+                          <option key={i} value={token?.symbol}>
+                            {token?.symbol}
+                          </option>
+                        ))
+                      }
                       <option value="USDC">USDC</option>
                     </select>
                   </div>
@@ -379,8 +413,8 @@ const CreateTrade = () => {
                   onChange={e => handleNftChainSelect(e.target.value)}
                 >
                   <option value="">Select chain</option>
-                  {tokenMetadata.map(token => (
-                    <option key={token.name} value={token.name}>
+                  {tokenMetadata.map((token, i) => (
+                    <option key={i} value={token.name}>
                       {token.name}
                     </option>
                   ))}
@@ -398,9 +432,8 @@ const CreateTrade = () => {
                     {nfts.map(nft => (
                       <div
                         key={`${nft.tokenAddress}-${nft.tokenId}`}
-                        className={`border p-2 rounded-md cursor-pointer ${
-                          selectedNft?.tokenId === nft.tokenId ? "border-blue-500" : "border-gray-300"
-                        }`}
+                        className={`border p-2 rounded-md cursor-pointer ${selectedNft?.tokenId === nft.tokenId ? "border-blue-500" : "border-gray-300"
+                          }`}
                         onClick={() => handleNftSelect(nft)}
                       >
                         <img
@@ -456,8 +489,8 @@ const CreateTrade = () => {
                 onChange={e => handleOptionChange(index, "chain", e.target.value)}
               >
                 <option value="">Select Chain</option>
-                {tokenMetadata.map(token => (
-                  <option key={token.name} value={token.name}>
+                {tokenMetadata.map((token, i) => (
+                  <option key={i} value={token.name}>
                     {token.name}
                   </option>
                 ))}
