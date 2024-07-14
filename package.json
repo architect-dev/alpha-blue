@@ -38,6 +38,7 @@
 		"node": ">=18.17.0"
 	},
 	"dependencies": {
-		"@svgr/webpack": "^8.1.0"
+		"@svgr/webpack": "^8.1.0",
+		"sharp": "v0.33.1"
 	}
 }
