@@ -93,7 +93,7 @@ export const Header = () => {
               src="/Alpha-Blue.png"
               alt="Alpha Blue Logo"
               layout="fill"
-              objectFit="contain"
+              style={{ objectFit: 'contain' }}
             />
           </div>
         </Link>
