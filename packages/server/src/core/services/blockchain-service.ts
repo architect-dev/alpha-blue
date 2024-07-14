@@ -3,6 +3,7 @@ import { updateBlockchainLastReadEventBlock } from "src/core/db/repositories/blo
 import {
     BaseEventModel,
     EventModel,
+    FillCreatedEvent,
     FillFailedEvent,
     OfferCancelledEvent,
     OfferDeadlinedEvent,
@@ -23,6 +24,7 @@ import {
 } from "src/core/services/blockchain-service-extra";
 import { ContractWrapper } from "src/core/services/contract-service";
 import {
+    createFill,
     createOrder,
     fillOrder,
     updateFillStatus,
@@ -145,20 +147,26 @@ export async function getEventLogs(
 
     if (blockchain.id == 421614 || blockchain.id == 80002) {
         const provider = new ethers.JsonRpcProvider(blockchain.rpcUrl);
-        const topicSize = 4;
+        const topicSize = 2;
 
         const promisedEvents: EventLog[] = [];
 
         for (let i = 0; i < topicAddresses.length; i += topicSize) {
             const topicSet = topicAddresses.slice(i, i + topicSize);
 
+            const fromBlock = BigInt(63676080);
+            const toBlock = BigInt(63676110);
+
             const filter = {
-                address: contractAddress,
-                topics: topicSet,
-                fromBlock: firstBlock,
-                toBlock: endBlock,
+                address: [contractAddress],
+                topics: [topicSet],
+                fromBlock: ethers.toQuantity(fromBlock),
+                toBlock: ethers.toQuantity(toBlock),
             };
-            const response = (await provider.getLogs(filter)) as EventLog[];
+            const response = (await provider.send("eth_getLogs", [
+                filter,
+            ])) as EventLog[];
+
 
             promisedEvents.push(...response);
         }
@@ -179,7 +187,9 @@ export async function getEventLogs(
 
         const topicOrParams = "topic0_1_opr=or&topic0_2_opr=or";
 
-        const callUrl = `${blockchain.rpcUrl}?module=logs&action=getlogs&fromBlock=${firstBlock}&toBlock=${endBlock}&address=${contractAddress}&${topicList}&${topicOrParams}`;
+        const callUrl = `${
+            blockchain.rpcUrl
+        }?module=logs&action=getlogs&fromBlock=${12576900}&toBlock=${12576910}&address=${contractAddress}&${topicList}&${topicOrParams}`;
         console.log("🚀 ~ callUrl:", callUrl);
 
         const fetchLogs = await fetch(callUrl);
@@ -234,6 +244,13 @@ export async function processEventModel(eventModel: BaseEventModel) {
             break;
         }
 
+        case "FillCreated": {
+            const event: FillCreatedEvent = eventModel as FillCreatedEvent;
+            await createFill(event);
+
+            break;
+        }
+
         default:
             break;
     }
@@ -283,6 +300,10 @@ export async function readChainEvents(blockchain: BlockchainNetwork) {
                     ?.args,
                 eventName,
             };
+            console.log(
+                "🚀 ~ readChainEvents ~ notificationEvent:",
+                notificationEvent
+            );
             console.log(notificationEvent);
 
             const eventModel = new EventModelType(

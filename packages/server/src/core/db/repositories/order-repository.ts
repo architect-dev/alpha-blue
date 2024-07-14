@@ -154,7 +154,7 @@ export async function updateOrderBasisPoints(
     orderPkId: number,
     basisPoints: {
         pendingBasisPoints: number;
-        remainingBasisPoints: number;
+        filledBasisPoints: number;
     }
 ): Promise<Order> {
     const databaseConnection = DatabaseManager.getInstance();
@@ -165,7 +165,7 @@ export async function updateOrderBasisPoints(
         .where("pk_id", orderPkId)
         .update({
             pending_basis_points: basisPoints.pendingBasisPoints,
-            remaining_basis_points: basisPoints.remainingBasisPoints,
+            filled_basis_points: basisPoints.filledBasisPoints,
         });
 
     return await getOrder({ pkId: orderPkId });

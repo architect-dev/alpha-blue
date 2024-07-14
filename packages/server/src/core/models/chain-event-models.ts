@@ -20,7 +20,7 @@ export class BaseEventModel {
         this.contractAddress = event.address;
         this.blockchain = blockchain;
         this.blockNumber = event.blockNumber ?? 0;
-        this.orderId = event.parsedArgs?.orderId ?? 0;
+        this.orderId = Number(event.parsedArgs?.offerId) ?? 0;
     }
 }
 
@@ -34,7 +34,7 @@ export class FillCreatedEvent extends BaseEventModel {
     fillId: number;
     constructor(event: EventModel, blockchain: BlockchainNetwork) {
         super(event, blockchain);
-        this.fillId = event.parsedArgs?.fillId ?? 0;
+        this.fillId = Number(event.parsedArgs?.fillId) ?? 0;
     }
 }
 
@@ -43,7 +43,7 @@ export class OrderFilledEvent extends BaseEventModel {
 
     constructor(event: EventModel, blockchain: BlockchainNetwork) {
         super(event, blockchain);
-        this.fillId = event.parsedArgs?.fillId ?? 0;
+        this.fillId = Number(event.parsedArgs?.fillId) ?? 0;
     }
 }
 
@@ -53,7 +53,7 @@ export class FillDeadlinedEvent extends BaseEventModel {
 
     constructor(event: EventModel, blockchain: BlockchainNetwork) {
         super(event, blockchain);
-        this.fillId = event.parsedArgs?.fillId ?? 0;
+        this.fillId = Number(event.parsedArgs?.fillId) ?? 0;
         this.filler = event.parsedArgs?.filler ?? "";
     }
 }
@@ -64,7 +64,7 @@ export class FillFailedEvent extends BaseEventModel {
 
     constructor(event: EventModel, blockchain: BlockchainNetwork) {
         super(event, blockchain);
-        this.fillId = event.parsedArgs?.fillId ?? 0;
+        this.fillId = Number(event.parsedArgs?.fillId) ?? 0;
         this.filler = event.parsedArgs?.filler ?? "";
     }
 }
@@ -75,7 +75,7 @@ export class FillXFilledEvent extends BaseEventModel {
 
     constructor(event: EventModel, blockchain: BlockchainNetwork) {
         super(event, blockchain);
-        this.fillId = event.parsedArgs?.fillId ?? 0;
+        this.fillId = Number(event.parsedArgs?.fillId) ?? 0;
         this.filler = event.parsedArgs?.filler ?? "";
     }
 }
@@ -105,6 +105,6 @@ export class OfferFilledEvent extends BaseEventModel {
     constructor(event: EventModel, blockchain: BlockchainNetwork) {
         super(event, blockchain);
         this.creatorWalletAddress = event.parsedArgs?.creator ?? "";
-        this.fillId = event.parsedArgs?.fillId ?? 0;
+        this.fillId = Number(event.parsedArgs?.fillId) ?? 0;
     }
 }

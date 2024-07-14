@@ -87,9 +87,9 @@ export async function getOfferFromContract(
         allowPartialFills: rawContractOffer[5],
         expiration: rawContractOffer[7],
         fillOptions: rawContractOffer[8],
-        filledBP: rawContractOffer[11],
-        pendingBP: rawContractOffer[10],
-        status: rawContractOffer[13],
+        filledBP: Number(rawContractOffer[11]),
+        pendingBP: Number(rawContractOffer[10]),
+        status: Number(rawContractOffer[13]),
         offerFills: rawContractOffer[14],
     };
 
@@ -108,7 +108,7 @@ export async function getOfferFromContract(
 
     for (const fillOption of contractOffer.fillOptions) {
         const destinationBlockchainNetwork = await getBlockchainNetwork({
-            networkId: fillOption.chainId,
+            networkId: Number(fillOption.chainId),
         });
         const fillTokenMetaData = await getTokenMetadata({
             networkId: fillOption.chainId,
@@ -157,11 +157,11 @@ export async function getFillFromContract(
     const contractFill: ContractFill = {
         owner: rawContractFill[0],
         offerChain: rawContractFill[1],
-        offerId: rawContractFill[2],
+        offerId: Number(rawContractFill[2]),
         fillTokenAddress: rawContractFill[3],
         fillTokenAmount: rawContractFill[4],
         deadline: rawContractFill[5],
-        status: rawContractFill[8],
+        status: Number(rawContractFill[8]) + 1,
     };
 
     const fillTokenMetadata = await getTokenMetadata({
@@ -171,7 +171,7 @@ export async function getFillFromContract(
 
     const formattedOrderId = formatContractId(
         fillBlockchain.name,
-        "fill",
+        "order",
         contractFill.offerId
     );
 
