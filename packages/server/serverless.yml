@@ -16,7 +16,7 @@ functions:
     refresh-orders:
         handler: src/handlers/refresh-order.refreshOrder
         timeout: 25
-        memorySize: 16224
+        memorySize: 10240
         events:
             - httpApi:
                   path: "/api/v1/load"
@@ -25,7 +25,7 @@ functions:
     get-orders:
         handler: src/handlers/get-orders.getHttpOrders
         timeout: 25
-        memorySize: 16224
+        memorySize: 10240
         events:
             - httpApi:
                   path: "/api/v1/orders"
@@ -34,7 +34,7 @@ functions:
     get-order:
         handler: src/handlers/get-orders.getHttpOrders
         timeout: 25
-        memorySize: 1028
+        memorySize: 10240
         events:
             - httpApi:
                   path: "/api/v1/orders/{orderId}"
@@ -43,7 +43,7 @@ functions:
     chain-reader:
         handler: src/handlers/schedule/read-chain.chainReader
         timeout: 300
-        memorySize: 16224
+        memorySize: 10240
         events:
             - schedule:
                   name: chain-reader
