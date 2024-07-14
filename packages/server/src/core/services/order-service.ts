@@ -58,7 +58,7 @@ export async function createFill(event: FillCreatedEvent) {
     const formattedFillId = formatContractId(
         event.blockchain.name,
         "fill",
-        event.orderId
+        event.fillId
     );
 
     const existingFillHistory = await fetchFillHistory({
@@ -78,7 +78,7 @@ export async function createFill(event: FillCreatedEvent) {
 
     await updateOrderBasisPoints(order.pkId, {
         pendingBasisPoints: contractOrder.pendingBasisPoints,
-        remainingBasisPoints: contractOrder.filledBasisPoints,
+        filledBasisPoints: contractOrder.filledBasisPoints,
     });
 }
 
@@ -106,7 +106,7 @@ export async function fillOrder(event: OrderFilledEvent) {
 
     await updateOrderBasisPoints(order.pkId, {
         pendingBasisPoints: contractOrder.pendingBasisPoints,
-        remainingBasisPoints: contractOrder.filledBasisPoints,
+        filledBasisPoints: contractOrder.filledBasisPoints,
     });
 }
 
