@@ -24,7 +24,7 @@ export class ContractWrapper {
     contract: Contract;
 
     constructor(networkId: number, rpcUrl: string) {
-        const provider = new JsonRpcProvider(`${rpcUrl}`);
+        const provider = new JsonRpcProvider(rpcUrl);
 
         this.contract = new Contract(
             this.getAddressAbi(networkId).address,
@@ -61,11 +61,25 @@ export async function getOfferFromContract(
 ): Promise<NewOrder> {
     const contract = new ContractWrapper(
         sourceBlockchain.id,
-        sourceBlockchain.rpcUrl
+        sourceBlockchain.contractRpcUrl
     );
-    const contractOffer: ContractOffer = (
-        await contract.contract.getOffer(orderId)
-    ).offer;
+
+    const rawContractOffer = await contract.contract.getOffer(orderId);
+
+    const contractOffer: ContractOffer = {
+        owner: rawContractOffer[0],
+        tokenAddress: rawContractOffer[1],
+        tokenAmount: rawContractOffer[2],
+        nftAddress: rawContractOffer[3],
+        nftId: rawContractOffer[4],
+        allowPartialFills: rawContractOffer[5],
+        expiration: rawContractOffer[7],
+        fillOptions: rawContractOffer[8],
+        filledBP: rawContractOffer[11],
+        pendingBP: rawContractOffer[10],
+        status: rawContractOffer[13],
+        offerFills: rawContractOffer[14],
+    };
 
     const formattedOrderId = formatContractId(
         sourceBlockchain.name,
@@ -75,7 +89,7 @@ export async function getOfferFromContract(
 
     const sourceTokenMetadata = await getTokenMetadata({
         networkId: sourceBlockchain.id,
-        tokenAddress: contractOffer.depositTokenAddress,
+        tokenAddress: contractOffer.tokenAddress,
     });
 
     const potentialFills: NewPotentialFill[] = [];
@@ -85,7 +99,7 @@ export async function getOfferFromContract(
             networkId: fillOption.chainId,
         });
         const fillTokenMetaData = await getTokenMetadata({
-            networkId: destinationBlockchainNetwork.id,
+            networkId: fillOption.chainId,
             tokenAddress: fillOption.tokenAddress,
         });
 
@@ -106,7 +120,7 @@ export async function getOfferFromContract(
         newPotentialFills: potentialFills,
         orderWalletAddress: contractOffer.owner,
         allowPartialFill: contractOffer.allowPartialFills,
-        orderStatus: contractOffer.status + 1,
+        orderStatus: Number(contractOffer.status) + 1,
         orderDate: currentSeconds(),
         blockchainNetwork: sourceBlockchain,
         tokenMetadata: sourceTokenMetadata,
@@ -125,10 +139,18 @@ export async function getFillFromContract(
 ): Promise<NewFillHistory> {
     const contract = new ContractWrapper(
         fillBlockchain.id,
-        fillBlockchain.rpcUrl
+        fillBlockchain.contractRpcUrl
     );
-    const contractFill: ContractFill = (await contract.contract.getFill(fillId))
-        .fill as ContractFill;
+    const rawContractFill = await contract.contract.getFill(fillId);
+    const contractFill: ContractFill = {
+        owner: rawContractFill[0],
+        offerChain: rawContractFill[1],
+        offerId: rawContractFill[2],
+        fillTokenAddress: rawContractFill[3],
+        fillTokenAmount: rawContractFill[4],
+        deadline: rawContractFill[5],
+        status: rawContractFill[8],
+    };
 
     const fillTokenMetadata = await getTokenMetadata({
         networkId: fillBlockchain.id,

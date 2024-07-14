@@ -17,6 +17,7 @@ const blockChainData = [
         name: "Base Sepolia",
         block_explorer_url: "https://base-sepolia.blockscout.com",
         rpc_url: "https://base-sepolia.blockscout.com/api",
+        contract_rpc_url: "https://base-sepolia-rpc.publicnode.com",
         chain_image_url: "https://icons.llamao.fi/icons/chains/rsz_base.jpg",
     },
     {
@@ -24,6 +25,7 @@ const blockChainData = [
         name: "Celo Alfajores",
         block_explorer_url: "https://celo-alfajores.blockscout.com",
         rpc_url: "https://celo-alfajores.blockscout.com/api",
+        contract_rpc_url: "https://alfajores-forno.celo-testnet.org",
         chain_image_url: "https://cryptologos.cc/logos/celo-celo-logo.png",
     },
     {
@@ -32,7 +34,18 @@ const blockChainData = [
         block_explorer_url: "https://sepolia-explorer.arbitrum.io",
         rpc_url:
             "https://tiniest-serene-waterfall.arbitrum-sepolia.quiknode.pro/0d6e219b77ded0fdbfbd9f64e8a54f92c8989aa2/",
+        contract_rpc_url:
+            "https://tiniest-serene-waterfall.arbitrum-sepolia.quiknode.pro/0d6e219b77ded0fdbfbd9f64e8a54f92c8989aa2/",
         chain_image_url: "https://cryptologos.cc/logos/arbitrum-arb-logo.png",
+    },
+    {
+        id: 80002,
+        name: "Amoy",
+        block_explorer_url: "https://sepolia-explorer.arbitrum.io",
+        rpc_url: "https://polygon-amoy-bor-rpc.publicnode.com",
+        contract_rpc_url: "https://polygon-amoy-bor-rpc.publicnode.com",
+        chain_image_url:
+            "https://cdn.prod.website-files.com/637e2b6d602973ea0941d482/63e26c8a3f6e812d91a7aa3d_Polygon-New-Logo-p-500.png",
     },
 ];
 
@@ -48,18 +61,76 @@ const tokenMetadata = [
         address: "0xc21AdA7aadC14f5eDa420d45F4Ed0355baA124cB",
         decimals: "18",
         logo_url: WETH_LOGO,
+        network_id: 44787,
+    },
+    {
+        symbol: "WBTC",
+        address: "0xB3C45fE991ede6c7860e40Db8551D3CBAEA77F3C",
+        decimals: "8",
+        logo_url: WBTC_LOGO,
+        network_id: 44787,
+    },
+    {
+        symbol: "USDC",
+        address: "0xd17Bd01dfF6A3a12abBd2EE83f2eC6159c262049",
+        decimals: "6",
+        logo_url: USDC_LOGO,
+        network_id: 44787,
+    },
+    {
+        symbol: "BNB",
+        address: "0xb70f83a724c74d853B4DCf338860Ae3319D40AFD",
+        decimals: "18",
+        logo_url: BNB_LOGO,
+        network_id: 44787,
+    },
+
+    {
+        symbol: "WETH",
+        address: "0xc21AdA7aadC14f5eDa420d45F4Ed0355baA124cB",
+        decimals: "18",
+        logo_url: WETH_LOGO,
+        network_id: 80002,
+    },
+    {
+        symbol: "WBTC",
+        address: "0xB3C45fE991ede6c7860e40Db8551D3CBAEA77F3C",
+        decimals: "8",
+        logo_url: WBTC_LOGO,
+        network_id: 80002,
+    },
+    {
+        symbol: "USDC",
+        address: "0xd17Bd01dfF6A3a12abBd2EE83f2eC6159c262049",
+        decimals: "6",
+        logo_url: USDC_LOGO,
+        network_id: 80002,
+    },
+    {
+        symbol: "BNB",
+        address: "0xb70f83a724c74d853B4DCf338860Ae3319D40AFD",
+        decimals: "18",
+        logo_url: BNB_LOGO,
+        network_id: 80002,
+    },
+
+    {
+        symbol: "WETH",
+        address: "0xc21AdA7aadC14f5eDa420d45F4Ed0355baA124cB",
+        decimals: "18",
+        logo_url: WETH_LOGO,
         network_id: 84532,
     },
     {
         symbol: "WBTC",
         address: "0xB3C45fE991ede6c7860e40Db8551D3CBAEA77F3C",
-        decimals: "18",
+        decimals: "8",
         logo_url: WBTC_LOGO,
         network_id: 84532,
     },
     {
         symbol: "USDC",
-        address: "0xd17Bd01dfF6A3a12abBd2EE83f2eC6159c262049",
+        address: "0x150366De049BD34898b897e1DE30e11E9DA18e40",
         decimals: "6",
         logo_url: USDC_LOGO,
         network_id: 84532,
@@ -67,9 +138,38 @@ const tokenMetadata = [
     {
         symbol: "BNB",
         address: "0xb70f83a724c74d853B4DCf338860Ae3319D40AFD",
-        decimals: "8",
+        decimals: "18",
         logo_url: BNB_LOGO,
         network_id: 84532,
+    },
+
+    {
+        symbol: "WETH",
+        address: "0xc21AdA7aadC14f5eDa420d45F4Ed0355baA124cB",
+        decimals: "18",
+        logo_url: WETH_LOGO,
+        network_id: 421614,
+    },
+    {
+        symbol: "WBTC",
+        address: "0xB3C45fE991ede6c7860e40Db8551D3CBAEA77F3C",
+        decimals: "8",
+        logo_url: WBTC_LOGO,
+        network_id: 421614,
+    },
+    {
+        symbol: "USDC",
+        address: "0xd17Bd01dfF6A3a12abBd2EE83f2eC6159c262049",
+        decimals: "6",
+        logo_url: USDC_LOGO,
+        network_id: 421614,
+    },
+    {
+        symbol: "BNB",
+        address: "0xb70f83a724c74d853B4DCf338860Ae3319D40AFD",
+        decimals: "18",
+        logo_url: BNB_LOGO,
+        network_id: 421614,
     },
 ];
 
@@ -78,7 +178,8 @@ export async function up(knex: Knex) {
         table.increments("id").primary();
         table.string("name", 100).notNullable();
         table.string("block_explorer_url", 100).notNullable();
-        table.string("rpc_url", 150).notNullable();
+        table.string("rpc_url", 200).notNullable();
+        table.string("contract_rpc_url", 200).notNullable();
         table.string("chain_image_url", 300).notNullable();
         table.integer("last_read_events_block").notNullable().defaultTo(0);
         createdAtUpdatedAtRows(table, knex);

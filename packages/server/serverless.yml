@@ -16,7 +16,7 @@ functions:
     refresh-orders:
         handler: src/handlers/refresh-order.refreshOrder
         timeout: 25
-        memorySize: 1028
+        memorySize: 8224
         events:
             - httpApi:
                   path: "/api/v1/load"

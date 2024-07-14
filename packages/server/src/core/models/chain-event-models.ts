@@ -97,3 +97,14 @@ export class OfferDeadlinedEvent extends BaseEventModel {
         this.creatorWalletAddress = event.parsedArgs?.creator ?? "";
     }
 }
+
+export class OfferFilledEvent extends BaseEventModel {
+    creatorWalletAddress: string;
+    fillId: number;
+
+    constructor(event: EventModel, blockchain: BlockchainNetwork) {
+        super(event, blockchain);
+        this.creatorWalletAddress = event.parsedArgs?.creator ?? "";
+        this.fillId = event.parsedArgs?.fillId ?? 0;
+    }
+}

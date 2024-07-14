@@ -51,7 +51,7 @@ const withAddress = (
 ) => {
     if (options.address) {
         void queryBuilder.where(
-            `${tokenMetadataTable}.token_address`,
+            `${tokenMetadataTable}.address`,
             options.address
         );
     }
@@ -78,7 +78,7 @@ export async function getTokenMetadata(options: {
             symbol: options?.symbol,
         })
         .modify(withAddress, {
-            symbol: options?.tokenAddress,
+            address: options?.tokenAddress,
         });
 
     let dbTokenMetadata: TokenMetadataDbModel;

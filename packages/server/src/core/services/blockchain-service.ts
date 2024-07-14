@@ -10,6 +10,17 @@ import {
     OrderFilledEvent,
 } from "src/core/models/chain-event-models";
 import { BlockchainNetwork } from "src/core/models/domain-models";
+import {
+    eventToModelType,
+    FillCreated_EVENT_NAME,
+    FillDeadlined_EVENT_NAME,
+    FillFailed_EVENT_NAME,
+    FillXFilled_EVENT_NAME,
+    OfferCancelled_EVENT_NAME,
+    OfferCreated_EVENT_NAME,
+    OfferDeadlined_EVENT_NAME,
+    OfferFilled_EVENT_NAME,
+} from "src/core/services/blockchain-service-extra";
 import { ContractWrapper } from "src/core/services/contract-service";
 import {
     createOrder,
@@ -18,17 +29,7 @@ import {
     updateOffer,
 } from "src/core/services/order-service";
 
-const OfferCreated_EVENT_NAME = "OfferCreated";
-const OfferFilled_EVENT_NAME = "OfferFilled";
-const OfferCancelled_EVENT_NAME = "OfferCancelled";
-const OfferDeadlined_EVENT_NAME = "OfferDeadlined";
-
-const FillDeadlined_EVENT_NAME = "FillDeadlined";
-const FillFailed_EVENT_NAME = "FillFailed";
-const FillXFilled_EVENT_NAME = "FillXFilled";
-const FillCreated_EVENT_NAME = "FillCreated";
-
-const eventNames = [
+export const eventNames = [
     OfferCreated_EVENT_NAME,
     OfferFilled_EVENT_NAME,
     FillDeadlined_EVENT_NAME,
@@ -38,10 +39,6 @@ const eventNames = [
     OfferDeadlined_EVENT_NAME,
     FillCreated_EVENT_NAME,
 ];
-
-export const eventToModelType: Record<string, typeof BaseEventModel> = {};
-
-eventToModelType[OfferCreated_EVENT_NAME] = OrderCreatedEvent;
 
 export type TransactionResponse = {
     blockNumber: number;
@@ -58,7 +55,7 @@ export type CurrentBlockResponse = {
 export type ContractLogResponse = {
     message: "string";
     result: EventLog[];
-    status: number;
+    status: string;
 };
 
 export async function getBlockchainTransactionById(
@@ -105,13 +102,11 @@ export async function getTopicAddress(blockchain: BlockchainNetwork) {
     const eventTopicNameToTopic: Record<string, string> = {};
 
     for (const eventName of eventNames) {
-        console.log("🚀 ~ getTopicAddress ~ eventName:", eventName);
         const filterFn = contract.contract.filters[eventName];
         if (!filterFn) {
             throw new Error(`Contract is missing ${eventName} event in ABI`);
         }
         const topics = await filterFn().getTopicFilter();
-        console.log("🚀 ~ getTopicAddress ~ topics:", topics);
 
         if (topics && topics[0]) {
             let topicAddress: string;
@@ -120,7 +115,7 @@ export async function getTopicAddress(blockchain: BlockchainNetwork) {
             else topicAddress = topics[0];
 
             eventTopics.push(topicAddress);
-            eventTopicNameToTopic[eventName] = topicAddress;
+            eventTopicNameToTopic[topicAddress] = eventName;
         }
     }
 
@@ -157,34 +152,42 @@ export async function getEventLogs(
 
         return promisedEvents;
     }
-    const topicList = topicAddresses
-        .map((topic, index) => `topic${index}=${topic}`)
-        .join("&");
 
-    let firstBlock: number;
+    const topicSize = 2;
 
-    if (
-        blockchain.lastReadEventsBlock == 0 ||
-        endBlock - blockchain.lastReadEventsBlock > 2000
-    ) {
-        firstBlock = endBlock - 2000;
-    } else {
-        firstBlock = blockchain.lastReadEventsBlock + 1;
+    const promisedEvents: EventLog[] = [];
+
+    for (let i = 0; i < topicAddresses.length; i += topicSize) {
+        const topicSet = topicAddresses.slice(i, i + topicSize);
+
+        const topicList = topicSet
+            .map((topic, index) => `topic${index}=${topic}`)
+            .join("&");
+
+        let firstBlock: number;
+
+        if (
+            blockchain.lastReadEventsBlock == 0 ||
+            endBlock - blockchain.lastReadEventsBlock > 2000
+        ) {
+            firstBlock = endBlock - 2000;
+        } else {
+            firstBlock = blockchain.lastReadEventsBlock + 1;
+        }
+
+        const topicOrParams = "topic0_1_opr=or&topic0_2_opr=or";
+
+        const callUrl = `${blockchain.rpcUrl}?module=logs&action=getlogs&fromBlock=${firstBlock}&toBlock=${endBlock}&address=${contractAddress}&${topicList}&${topicOrParams}`;
+
+        const fetchLogs = await fetch(callUrl);
+        const json = (await fetchLogs.json()) as ContractLogResponse;
+
+        const eventLogs: EventLog[] = json.result;
+
+        promisedEvents.push(...eventLogs);
     }
 
-    const topicOrParams =
-        "&topic0_1_opr=or&topic0_2_opr=or&topic0_topic0_3_opr1_opr=or&topic1_2_opr=or&topic1_3_opr=or&topic2_3_opr=or&topic0_3_opr=or";
-
-    const callUrl = `${blockchain.rpcUrl}?module=logs&action=getlogs&fromBlock=${firstBlock}&toBlock=${endBlock}&address=${contractAddress}&${topicList}&${topicOrParams}`;
-
-    const fetchLogs = await fetch(callUrl);
-
-    const json: ContractLogResponse =
-        (await fetchLogs.json()) as ContractLogResponse;
-
-    const eventLogs: EventLog[] = json.result;
-
-    return eventLogs;
+    return promisedEvents;
 }
 
 export async function processEventModel(eventModel: BaseEventModel) {
@@ -251,12 +254,9 @@ export async function readChainEvents(blockchain: BlockchainNetwork) {
         lastBlock,
         eventTopics
     );
-    console.log("🚀 ~ readChainEvents ~ eventLogs:", eventLogs);
-
     const eventModels: BaseEventModel[] = [];
 
     for (const eventLog of eventLogs) {
-        console.log("🚀 ~ readChainEvents ~ eventLog:", eventLog);
         const eventTopic = eventLog.topics[0];
         const eventName = eventTopicNameToTopic[eventTopic];
 
@@ -265,10 +265,7 @@ export async function readChainEvents(blockchain: BlockchainNetwork) {
             contract.parseEventLogs(eventLog, blockchain.id)?.args
         ) {
             const EventModelType = eventToModelType[eventName];
-            console.log(
-                "🚀 ~ readChainEvents ~ EventModelType:",
-                EventModelType
-            );
+            console.log(EventModelType);
 
             if (!EventModelType) {
                 throw new Error(
@@ -283,10 +280,7 @@ export async function readChainEvents(blockchain: BlockchainNetwork) {
                     ?.args,
                 eventName,
             };
-            console.log(
-                "🚀 ~ readChainEvents ~ notificationEvent:",
-                notificationEvent
-            );
+            console.log(notificationEvent);
 
             const eventModel = new EventModelType(
                 notificationEvent,
@@ -296,6 +290,12 @@ export async function readChainEvents(blockchain: BlockchainNetwork) {
             await processEventModel(eventModel);
         }
     }
+
+    console.log(
+        "Updating blockchain last read event block",
+        blockchain.id,
+        lastBlock
+    );
 
     await updateBlockchainLastReadEventBlock(blockchain.id, lastBlock);
 
