@@ -179,9 +179,7 @@ export async function getEventLogs(
 
         const topicOrParams = "topic0_1_opr=or&topic0_2_opr=or";
 
-        const callUrl = `${
-            blockchain.rpcUrl
-        }?module=logs&action=getlogs&fromBlock=${63675000}&toBlock=${63675070}&address=${contractAddress}&${topicList}&${topicOrParams}`;
+        const callUrl = `${blockchain.rpcUrl}?module=logs&action=getlogs&fromBlock=${firstBlock}&toBlock=${endBlock}&address=${contractAddress}&${topicList}&${topicOrParams}`;
         console.log("🚀 ~ callUrl:", callUrl);
 
         const fetchLogs = await fetch(callUrl);
