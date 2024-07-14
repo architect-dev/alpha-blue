@@ -1,7 +1,8 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-// @TODO: Remove
+import "forge-std/console.sol";
+
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./AlphaBlueEvents.sol";
@@ -148,6 +149,12 @@ struct CCIPBlue {
     ErrorType errorType;
 }
 
+struct ChainSelectorParam {
+    uint256 chainId;
+    uint64 sourceSelector;
+    uint64 destSelector;
+}
+
 error OfferOwnerMismatch();
 error MissingOfferTokenOrNft();
 error MissingFillOptions();
@@ -211,6 +218,10 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
     address public weth;
     uint256 public nftWethDeposit;
 
+    mapping(uint256 => uint64) public chainSelector;
+    mapping(uint64 => uint256) public invChainSelector;
+    mapping(uint256 => uint64) public destSelector;
+
     IRouterClient public immutable router; // chainlink ccip router
     IERC20 public immutable linkToken;
 
@@ -243,6 +254,17 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
 
         for (uint256 i = 0; i < tokens.length; i++) {
             chainTokens[_chainId][tokens[i]] = tokensValid[i];
+        }
+    }
+
+    function setCcipSelectors(
+        ChainSelectorParam[] calldata selectors
+    ) public onlyOwner {
+        for (uint256 i = 0; i < selectors.length; i++) {
+            chainSelector[selectors[i].chainId] = selectors[i].sourceSelector;
+            invChainSelector[selectors[i].sourceSelector] = selectors[i]
+                .chainId;
+            destSelector[selectors[i].chainId] = selectors[i].destSelector;
         }
     }
 
@@ -739,6 +761,11 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
         uint256 offerChainId,
         CCIPBlue memory ccipBlue
     ) internal {
+        console.log(
+            "Check chain mismatch xfill",
+            offerChainId,
+            ccipBlue.offerChain
+        );
         if (offerChainId != ccipBlue.offerChain) revert ChainMismatch();
 
         FillData storage fill = fills[ccipBlue.fillId];
@@ -757,6 +784,11 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
         uint256 offerChainId,
         CCIPBlue memory ccipBlue
     ) internal {
+        console.log(
+            "Check chain mismatch xfill",
+            offerChainId,
+            ccipBlue.offerChain
+        );
         if (offerChainId != ccipBlue.offerChain) revert ChainMismatch();
 
         FillData storage fill = fills[ccipBlue.fillId];
@@ -837,10 +869,8 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
         if (ccipBlue.offerChain == ccipBlue.fillChain) {
             Client.Any2EVMMessage memory sameChainMessage = Client
                 .Any2EVMMessage({
-                    messageId: bytes32(0), // No messageId
-                    sourceChainSelector: uint64(
-                        _getChainSelector(ccipBlue.offerChain)
-                    ),
+                    messageId: bytes32(0),
+                    sourceChainSelector: chainSelector[chainId],
                     sender: abi.encode(address(this)),
                     data: abi.encode(ccipBlue),
                     destTokenAmounts: new Client.EVMTokenAmount[](0) // Sending no tokens directly
@@ -854,29 +884,22 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
         }
         // Cross chain message
         bytes memory payload = abi.encode(ccipBlue);
-        uint64 destinationChainSelector = _getChainSelector(
-            ccipBlue.offerChain
-        );
+        uint256 destChain = _getCCIPReceiver(ccipBlue);
 
         Client.EVM2AnyMessage memory xcMessage = Client.EVM2AnyMessage({
-            receiver: abi.encode(
-                chainData[_getCCIPReceiver(ccipBlue)].contractAddress
-            ),
+            receiver: abi.encode(chainData[destChain].contractAddress),
             data: payload,
             tokenAmounts: new Client.EVMTokenAmount[](0),
             feeToken: address(linkToken),
-            extraArgs: Client._argsToBytes(
-                Client.EVMExtraArgsV1({gasLimit: 900000})
-            )
+            extraArgs: ""
         });
 
-        uint256 fee = router.getFee(destinationChainSelector, xcMessage);
-        fee = 0.1e18;
+        uint256 fee = router.getFee(destSelector[destChain], xcMessage);
         if (linkToken.balanceOf(address(this)) < fee)
             revert InsufficientLinkBalance();
         linkToken.approve(address(router), fee);
 
-        router.ccipSend(destinationChainSelector, xcMessage);
+        router.ccipSend(destSelector[destChain], xcMessage);
     }
 
     function _getCCIPReceiver(
@@ -899,53 +922,18 @@ contract AlphaBlue is Ownable, AlphaBlueEvents, CCIPReceiver {
     ) internal override {
         CCIPBlue memory ccipBlue = abi.decode(any2EvmMessage.data, (CCIPBlue));
 
+        uint256 sourceChain = invChainSelector[
+            any2EvmMessage.sourceChainSelector
+        ];
+
         if (ccipBlue.messageType == MessageType.CFILL) {
-            _handleCFILL(
-                _getReverseChainSelector(any2EvmMessage.sourceChainSelector),
-                ccipBlue
-            );
+            _handleCFILL(sourceChain, ccipBlue);
         } else if (ccipBlue.messageType == MessageType.CXFILL) {
-            _handleCXFILL(
-                _getReverseChainSelector(any2EvmMessage.sourceChainSelector),
-                ccipBlue
-            );
+            _handleCXFILL(sourceChain, ccipBlue);
         } else if (ccipBlue.messageType == MessageType.CINVALID) {
-            _handleCINVALID(
-                _getReverseChainSelector(any2EvmMessage.sourceChainSelector),
-                ccipBlue
-            );
+            _handleCINVALID(sourceChain, ccipBlue);
         } else if (ccipBlue.messageType == MessageType.CDEADLINE) {
-            _handleCDEADLINE(
-                _getReverseChainSelector(any2EvmMessage.sourceChainSelector),
-                ccipBlue
-            );
+            _handleCDEADLINE(sourceChain, ccipBlue);
         }
-    }
-
-    /// @dev values from https://docs.chain.link/ccip/supported-networks/v1_2_0/testnet#overview
-    function _getChainSelector(
-        uint256 _chainId
-    ) internal pure returns (uint64) {
-        if (_chainId == 5) return 16015286601757825753; // Ethereum Sepolia
-        if (_chainId == 84532) return 10344971235874465080; // Base Sepolia
-        if (_chainId == 44787) return 3552045678561919002; // Celo Alfajores
-        if (_chainId == 80002) return 16281711391670634445; // Polygon Amoy
-        if (_chainId == 43113) return 14767482510784806043; // Avalanche Fuji
-        if (_chainId == 421614) return 3478487238524512106; // Arbitrum Sepolia
-
-        revert UnsupportedChainId();
-    }
-
-    function _getReverseChainSelector(
-        uint64 _selector
-    ) internal pure returns (uint256) {
-        if (_selector == 16015286601757825753) return 5; // Ethereum Sepolia
-        if (_selector == 10344971235874465080) return 84532; // Base Sepolia
-        if (_selector == 3552045678561919002) return 44787; // Celo Alfajores
-        if (_selector == 16281711391670634445) return 80002; // Polygon Amoy
-        if (_selector == 14767482510784806043) return 43113; // Avalanche Fuji
-        if (_selector == 3478487238524512106) return 421614; // Arbitrum Sepolia
-
-        revert UnsupportedChainId();
     }
 }

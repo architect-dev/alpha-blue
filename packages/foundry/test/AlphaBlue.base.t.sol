@@ -128,6 +128,7 @@ abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
         _giveTokens(user4);
 
         setLabels();
+        _setSelectors();
 
         uint256 linkAmount = 5 ether;
         ccipLocalSimulator.requestLinkFromFaucet(
@@ -350,6 +351,29 @@ abstract contract AlphaBlueBase is Test, AlphaBlueEvents {
     }
 
     // REUSABLES
+
+    function _setSelectors() internal {
+        ChainSelectorParam[] memory selectors = new ChainSelectorParam[](3);
+        selectors[0] = ChainSelectorParam({
+            chainId: arbChainId,
+            sourceSelector: 100,
+            destSelector: 101
+        });
+        selectors[1] = ChainSelectorParam({
+            chainId: baseChainId,
+            sourceSelector: 200,
+            destSelector: 201
+        });
+        selectors[2] = ChainSelectorParam({
+            chainId: celoChainId,
+            sourceSelector: 300,
+            destSelector: 301
+        });
+
+        alphaBlueArb.setCcipSelectors(selectors);
+        alphaBlueBase.setCcipSelectors(selectors);
+        alphaBlueCelo.setCcipSelectors(selectors);
+    }
 
     function _createBaseOfferParams()
         internal
