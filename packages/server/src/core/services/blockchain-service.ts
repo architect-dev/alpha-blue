@@ -76,7 +76,7 @@ export async function getBlockchainTransactionById(
 
 export async function getLastBlockHex(blockchain: BlockchainNetwork) {
     console.log("Getting last block hex", blockchain);
-    if (blockchain.id == 421614) {
+    if (blockchain.id == 421614 || blockchain.id == 80002) {
         const provider = new ethers.JsonRpcProvider(blockchain.rpcUrl);
         const blockNumber = await provider.getBlockNumber();
         return `0x${blockNumber}`;
@@ -130,7 +130,7 @@ export async function getEventLogs(
     endBlock: number,
     topicAddresses: string[]
 ) {
-    if (blockchain.id == 421614) {
+    if (blockchain.id == 421614 || blockchain.id == 80002) {
         const provider = new ethers.JsonRpcProvider(blockchain.rpcUrl);
         const topicSize = 4;
 
