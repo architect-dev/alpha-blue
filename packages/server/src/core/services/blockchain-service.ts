@@ -80,6 +80,7 @@ export async function getLastBlockHex(blockchain: BlockchainNetwork) {
     if (blockchain.id == 421614 || blockchain.id == 80002) {
         const provider = new ethers.JsonRpcProvider(blockchain.rpcUrl);
         const blockNumber = await provider.getBlockNumber();
+
         return numberToHex(blockNumber);
     } else {
         const callUrl = `${blockchain.rpcUrl}?module=block&action=eth_block_number`;
@@ -154,10 +155,10 @@ export async function getEventLogs(
             const filter = {
                 address: contractAddress,
                 topics: topicSet,
+                fromBlock: firstBlock,
+                toBlock: endBlock,
             };
-            const response: EventLog[] = (await provider.getLogs(
-                filter
-            )) as EventLog[];
+            const response = (await provider.getLogs(filter)) as EventLog[];
 
             promisedEvents.push(...response);
         }
@@ -176,20 +177,12 @@ export async function getEventLogs(
             .map((topic, index) => `topic${index}=${topic}`)
             .join("&");
 
-        let firstBlock: number;
-
-        if (
-            blockchain.lastReadEventsBlock == 0 ||
-            endBlock - blockchain.lastReadEventsBlock > 2000
-        ) {
-            firstBlock = endBlock - 2000;
-        } else {
-            firstBlock = blockchain.lastReadEventsBlock + 1;
-        }
-
         const topicOrParams = "topic0_1_opr=or&topic0_2_opr=or";
 
-        const callUrl = `${blockchain.rpcUrl}?module=logs&action=getlogs&fromBlock=${firstBlock}&toBlock=${endBlock}&address=${contractAddress}&${topicList}&${topicOrParams}`;
+        const callUrl = `${
+            blockchain.rpcUrl
+        }?module=logs&action=getlogs&fromBlock=${63675000}&toBlock=${63675070}&address=${contractAddress}&${topicList}&${topicOrParams}`;
+        console.log("🚀 ~ callUrl:", callUrl);
 
         const fetchLogs = await fetch(callUrl);
         const json = (await fetchLogs.json()) as ContractLogResponse;
