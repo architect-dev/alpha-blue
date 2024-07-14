@@ -15,8 +15,15 @@ import { customEvmNetworks } from "~~/lib/networks";
 import scaffoldConfig from "~~/scaffold.config";
 import { useGlobalState } from "~~/services/store/store";
 import { wagmiConfig } from "~~/services/web3/wagmiConfig";
+import { useTheme } from "next-themes";
 
 const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
+  const { setTheme, resolvedTheme } = useTheme();
+
+  useEffect(() => {
+    setTheme("light");
+  }, []);
+
   const price = useNativeCurrencyPrice();
   const setNativeCurrencyPrice = useGlobalState(state => state.setNativeCurrencyPrice);
 
