@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useAccount, useBalance } from "wagmi";
+import { useEffect, useRef, useState } from "react";
 import { parseUnits, zeroAddress } from "viem";
+import { useAccount, useBalance } from "wagmi";
 import { useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 import { getParsedError } from "~~/utils/scaffold-eth";
 
@@ -33,7 +33,15 @@ interface NFT {
 const tokenMetadata = [
   {
     symbol: "USDC",
-    address: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    address: "0x046381E3750f367540d046075C4dB392D3F48569",
+    decimals: 6,
+    name: "Polygon Amoy",
+    logo_url: "/path/to/USDC_LOGO.png",
+    network_id: 80002,
+  },
+  {
+    symbol: "USDC",
+    address: "0x4Cef8bdCbDac0849cAEAD241339a2C91EecAF965",
     decimals: 6,
     name: "Base Sepolia",
     logo_url: "/path/to/USDC_LOGO.png",
@@ -41,18 +49,85 @@ const tokenMetadata = [
   },
   {
     symbol: "USDC",
-    address: "0x2F25deB3848C207fc8E0c34035B3Ba7fC157602B",
+    name: "Arbitrum Sepolia",
+    address: "0x490da4aA8D854620F9C3f249Dc00f4Be1A64D499",
     decimals: 6,
-    name: "Celo Alfajores",
     logo_url: "/path/to/USDC_LOGO.png",
-    network_id: 44787,
+    network_id: 421614,
+  },
+
+  {
+    symbol: "WETH",
+    address: "0x1Ab43ddF4DD48696C48A34c5359324A24e14cC13",
+    decimals: 18,
+    name: "Polygon Amoy",
+    logo_url: "/path/to/WETH_LOGO.png",
+    network_id: 80002,
   },
   {
-    symbol: "USDC",
+    symbol: "WETH",
+    address: "0x479635DDF8ea6886c5AeD2599146E643F60e8A2B",
+    decimals: 18,
+    name: "Base Sepolia",
+    logo_url: "/path/to/WETH_LOGO.png",
+    network_id: 84532,
+  },
+  {
+    symbol: "WETH",
     name: "Arbitrum Sepolia",
-    address: "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
-    decimals: 6,
-    logo_url: "/path/to/USDC_LOGO.png",
+    address: "0x27ef087EB034E71AC2D89266299588fa1AeB1893",
+    decimals: 18,
+    logo_url: "/path/to/WETH_LOGO.png",
+    network_id: 421614,
+  },
+
+  {
+    symbol: "WBTC",
+    address: "0x2474396A9f5c2d068794727EE0A5D2e0eC46A613",
+    decimals: 8,
+    name: "Polygon Amoy",
+    logo_url: "/path/to/WBTC_LOGO.png",
+    network_id: 80002,
+  },
+  {
+    symbol: "WBTC",
+    address: "0xe6923DFa9105b3443C265E865e15078546273551",
+    decimals: 8,
+    name: "Base Sepolia",
+    logo_url: "/path/to/WBTC_LOGO.png",
+    network_id: 84532,
+  },
+  {
+    symbol: "WBTC",
+    name: "Arbitrum Sepolia",
+    address: "0x490da4aA8D854620F9C3f249Dc00f4Be1A64D499",
+    decimals: 8,
+    logo_url: "/path/to/WBTC_LOGO.png",
+    network_id: 421614,
+  },
+
+  {
+    symbol: "BNB",
+    address: "0xB8d92A8b9dF0Ef3a7b14dFAdCC07175820dd841A",
+    decimals: 18,
+    name: "Polygon Amoy",
+    logo_url: "/path/to/BNB_LOGO.png",
+    network_id: 80002,
+  },
+  {
+    symbol: "BNB",
+    address: "0x37BF9515C97F93774Dc46416D8058Bd8F2B7b6e6",
+    decimals: 18,
+    name: "Base Sepolia",
+    logo_url: "/path/to/BNB_LOGO.png",
+    network_id: 84532,
+  },
+  {
+    symbol: "BNB",
+    name: "Arbitrum Sepolia",
+    address: "0x490da4aA8D854620F9C3f249Dc00f4Be1A64D499",
+    decimals: 18,
+    logo_url: "/path/to/BNB_LOGO.png",
     network_id: 421614,
   },
 ];
@@ -75,10 +150,10 @@ const useUserNFTs = (address: string | undefined, chainIds: number[] | undefined
       hasFetched.current = true; // Step 4: Mark as fetched
 
       try {
-        const response = await fetch('/api/fetchnfts', {
-          method: 'POST',
+        const response = await fetch("/api/fetchnfts", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({ address, chainIds, limit, offset }),
         });
@@ -88,7 +163,7 @@ const useUserNFTs = (address: string | undefined, chainIds: number[] | undefined
         }
 
         const fetchedNFTs = await response.json();
-        console.log({ fetchedNFTs })
+        console.log({ fetchedNFTs });
         setNfts(fetchedNFTs.assets || []);
         setIsLoading(false);
       } catch (err) {
@@ -120,7 +195,11 @@ const CreateTrade = () => {
   const chainIds = tokenMetadata.filter(token => selectedNftChains.includes(token.name)).map(token => token.network_id);
   const { nfts, isLoading: nftsLoading, error: nftsError } = useUserNFTs(address, chainIds);
 
-  const { data: balance, isError, isLoading } = useBalance({
+  const {
+    data: balance,
+    isError,
+    isLoading,
+  } = useBalance({
     address: address,
     token: selectedTokenMetadata?.address,
     chainId: selectedTokenMetadata?.network_id,
@@ -164,9 +243,10 @@ const CreateTrade = () => {
     const oneWeekFromNow = currentTimestamp + BigInt(7 * 24 * 60 * 60); // 1 week expiration
 
     let offerData = {
-      owner: address!,
+      owner: zeroAddress,
       tokenAddress: offerType === "Token" ? selectedTokenMetadata?.address || zeroAddress : zeroAddress,
-      tokenAmount: offerType === "Token" ? parseUnits(selectedTokenAmount, selectedTokenMetadata?.decimals || 18) : BigInt(0),
+      tokenAmount:
+        offerType === "Token" ? parseUnits(selectedTokenAmount, selectedTokenMetadata?.decimals || 18) : BigInt(0),
       nftAddress: offerType === "NFT" ? selectedNft?.tokenAddress || zeroAddress : zeroAddress,
       nftId: offerType === "NFT" ? BigInt(selectedNft?.tokenId || "0") : BigInt(0),
       allowPartialFills: tradeType === "partial",
@@ -176,7 +256,7 @@ const CreateTrade = () => {
         chainId: BigInt(tokenMetadata.find(token => token.name === option.chain)?.network_id || 0),
         tokenAddress: tokenMetadata.find(token => token.name === option.chain)?.address || zeroAddress,
         tokenAmount: parseUnits(option.amount, 6), // Assuming USDC with 6 decimals
-        destAddress: address!, // Assuming the address to be the current user's address
+        destAddress: zeroAddress, // Assuming the address to be the current user's address
       })),
       status: FillStatus.Pending,
       offerFills: [],
@@ -190,12 +270,12 @@ const CreateTrade = () => {
       console.log({ offerData });
       await createOfferWrite({
         functionName: "createOffer",
-        args: [offerData]
+        args: [offerData],
       });
       console.log("Offer created successfully");
       // Reset form or navigate to a success page
     } catch (error) {
-      console.error('Error creating offer:', getParsedError(error));
+      console.error("Error creating offer:", getParsedError(error));
     }
   };
 
@@ -236,7 +316,7 @@ const CreateTrade = () => {
                 <select
                   className="w-full p-2 border rounded-md"
                   value={selectedChain}
-                  onChange={(e) => handleChainSelect(e.target.value)}
+                  onChange={e => handleChainSelect(e.target.value)}
                 >
                   <option value="">Select chain</option>
                   {tokenMetadata.map(token => (
@@ -253,7 +333,7 @@ const CreateTrade = () => {
                     <select
                       className="w-full p-2 border rounded-md"
                       value={selectedToken}
-                      onChange={(e) => setSelectedToken(e.target.value)}
+                      onChange={e => setSelectedToken(e.target.value)}
                     >
                       <option value="USDC">USDC</option>
                     </select>
@@ -266,19 +346,23 @@ const CreateTrade = () => {
                       {isError && <div>Error fetching balance</div>}
                       {!isLoading && !isError && (
                         <div className="flex justify-between items-center">
-                          <div className="text-xl font-bold">{balance.formatted} {balance.symbol}</div>
+                          <div className="text-xl font-bold">
+                            {balance.formatted} {balance.symbol}
+                          </div>
                           <div className="text-sm text-gray-500">on {selectedChain}</div>
                         </div>
                       )}
                     </div>
                   )}
                   <div className="mb-4">
-                    <div className="text-sm text-neutral-600 mb-1">Amount of {balance?.symbol || 'token'} to add to trade:</div>
+                    <div className="text-sm text-neutral-600 mb-1">
+                      Amount of {balance?.symbol || "token"} to add to trade:
+                    </div>
                     <input
                       type="number"
                       className="w-full p-2 border rounded-md"
                       value={selectedTokenAmount}
-                      onChange={(e) => setSelectedTokenAmount(e.target.value)}
+                      onChange={e => setSelectedTokenAmount(e.target.value)}
                     />
                   </div>
                 </>
@@ -292,7 +376,7 @@ const CreateTrade = () => {
                 <select
                   className="w-full p-2 border rounded-md"
                   value=""
-                  onChange={(e) => handleNftChainSelect(e.target.value)}
+                  onChange={e => handleNftChainSelect(e.target.value)}
                 >
                   <option value="">Select chain</option>
                   {tokenMetadata.map(token => (
@@ -311,20 +395,26 @@ const CreateTrade = () => {
                     <div>You don't have any NFTs on the selected chains</div>
                   )}
                   <div className="grid grid-cols-2 gap-2">
-                    {nfts.map((nft) => (
+                    {nfts.map(nft => (
                       <div
                         key={`${nft.tokenAddress}-${nft.tokenId}`}
-                        className={`border p-2 rounded-md cursor-pointer ${selectedNft?.tokenId === nft.tokenId ? "border-blue-500" : "border-gray-300"
-                          }`}
+                        className={`border p-2 rounded-md cursor-pointer ${
+                          selectedNft?.tokenId === nft.tokenId ? "border-blue-500" : "border-gray-300"
+                        }`}
                         onClick={() => handleNftSelect(nft)}
                       >
-                        <img src={nft.metadata?.image || '/placeholder-image.png'} alt={nft.name} className="w-full h-auto" />
+                        <img
+                          src={nft.metadata?.image || "/placeholder-image.png"}
+                          alt={nft.name}
+                          className="w-full h-auto"
+                        />
                         <p className="text-sm mt-1">{nft.name || `NFT #${nft.tokenId}`}</p>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
+              o.yYrt.é
             </>
           )}
         </div>
@@ -401,11 +491,7 @@ const CreateTrade = () => {
             + Add Another Option
           </button>
         </div>
-        <button
-          type="submit"
-          className="w-full bg-blue-700 text-white py-2 rounded-md"
-          disabled={isCreateOfferLoading}
-        >
+        <button type="submit" className="w-full bg-blue-700 text-white py-2 rounded-md" disabled={isCreateOfferLoading}>
           {isCreateOfferLoading ? "Creating offer..." : "Submit"}
         </button>
       </form>

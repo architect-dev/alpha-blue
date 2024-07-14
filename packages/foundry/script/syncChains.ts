@@ -83,10 +83,8 @@ type ChainData = {
 }
 
 const chainsToSync: Record<string, true> = {
-	[sepolia.id]: true,
 	[baseSepolia.id]: true,
 	[arbitrumSepolia.id]: true,
-	[gnosisChiado.id]: true,
 	[polygonAmoy.id]: true,
 }
 
