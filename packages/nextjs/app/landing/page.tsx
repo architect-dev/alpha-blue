@@ -1,8 +1,8 @@
 import React from "react";
-import TextAnimation from "../components/TextAnimation";
+import TextAnimation from "../../components/TextAnimation";
 import Image from "next/image";
 
-const Home = () => {
+const Landing = () => {
   return (
     <div className="relative min-h-screen w-screen overflow-hidden">
       {/* Hero Section */}
@@ -37,4 +37,4 @@ const Home = () => {
   );
 };
 
-export default Home;
+export default Landing;
