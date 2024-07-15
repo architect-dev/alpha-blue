@@ -93,7 +93,7 @@ export const Header = () => {
             <Image
               src="/Alpha-Blue.png"
               alt="Alpha Blue Logo"
-              layout="fill"
+              fill={true}
               style={{ objectFit: 'contain' }}
             />
           </div>
